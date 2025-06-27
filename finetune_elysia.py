@@ -22,7 +22,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments,
 from unsloth import FastLanguageModel
 from trl import SFTTrainer
 import torch
-
+# __init__
+interrupt_dir = None
+last_checkpoint = None
+# checkpoint_path = None
 # 重写open函数强制使用utf-8编码，避免文件读取时的编码错误，对性能无直接影响
 _original_open = builtins.open
 def custom_open(file, mode='r', encoding='utf-8', errors='ignore', **kwargs):
@@ -46,23 +49,36 @@ class MemoryMonitorCallback(TrainerCallback):
         torch.cuda.empty_cache()
 
 def main():
-    # 检查点恢复逻辑前置
-    last_checkpoint = None
-    if os.path.exists("./results"):
+    # 增强版检查点恢复逻辑
+    from transformers.trainer_utils import get_last_checkpoint
+    
+    
+    if os.path.exists("./results") and get_last_checkpoint("./results") is not None:
         try:
-            last_checkpoint = get_last_checkpoint("./results")
+            global last_checkpoint
+            last_checkpoint = get_last_checkpoint("./results").replace("\\", "/")
+
             required_files = [
                 "training_args.bin",
                 "optimizer.pt",
                 "scheduler.pt",
                 "trainer_state.json",
-                "rng_state.pth"  # 新增必要文件
+                "rng_state.pth",
+                "adapter_config.json",
+                "adapter_model.safetensors"
             ]
-            if last_checkpoint and not all(os.path.exists(os.path.join(last_checkpoint, f)) for f in required_files):
-                print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 跳过恢复...")
-                last_checkpoint = None
+            if last_checkpoint:
+                # 统一检查点路径格式
+                # global checkpoint_path
+                # checkpoint_path = last_checkpoint.replace("\\", "/")
+                missing = [f for f in required_files if not os.path.isfile(os.path.join(last_checkpoint, f))]
+                if missing:
+                    print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 缺失文件: {', '.join(missing)}")
+                    
+                else:
+                    print(f"\n✅ 找到有效检查点: {last_checkpoint}")
         except Exception as e:
-            print(f"\n⚠️ 检查点恢复失败: {str(e)}")
+            print(f"\n⚠️ 检查点恢复异常: {str(e)}")
 
     # 加载模型和分词器
     # 模型名称/路径，选择4bit量化版本以减少GPU内存占用，直接影响模型性能和GPU内存使用
@@ -115,8 +131,7 @@ def main():
     # 设置训练参数，全面影响训练速度、模型性能和资源使用
     training_args = TrainingArguments(
         output_dir="./results",  # 训练结果保存目录，对性能无影响
-
-        resume_from_checkpoint=last_checkpoint,  # 使用前置逻辑设置的检查点
+        restore_callback_states_from_checkpoint=True,
         save_strategy="steps",
         save_steps=500,
         save_total_limit=2,  # 限制为2个最新检查点
@@ -130,7 +145,7 @@ def main():
         per_device_train_batch_size=12,  # 减小批次大小以降低显存峰值
         gradient_accumulation_steps=2,  # 增加梯度累积补偿批次减小
         learning_rate=2e-5,  # 适当降低学习率
-        optim="paged_adamw_8bit",  # 启用分页优化器减少内存碎片
+        optim="adamw_torch",  #  使用标准优化器减少内存碎片化，提升计算效率
         fp16 = not torch.cuda.is_bf16_supported(),
         bf16 = torch.cuda.is_bf16_supported(),
         max_grad_norm = 0.3,
@@ -196,15 +211,15 @@ def main():
     from transformers.trainer_utils import get_last_checkpoint  # 显式导入
     # 获取最后一个检查点路径，影响训练恢复能力
     # 增强版检查点恢复
-    last_checkpoint = None
-    if os.path.exists("./results"):
-        try:
-            last_checkpoint = get_last_checkpoint("./results")
-            if last_checkpoint and not os.path.exists(os.path.join(last_checkpoint, "training_args.bin")):
-                print(f"\n发现不完整检查点 {last_checkpoint}, 跳过恢复...")
-                last_checkpoint = None
-        except Exception as e:
-            print(f"\n检查点恢复失败: {str(e)}")
+    
+    # if os.path.exists("./results"):
+    #     try:
+    #         last_checkpoint = get_last_checkpoint("./results").replace("\\", "/")
+    #         if last_checkpoint and not os.path.exists(os.path.join(last_checkpoint, "training_args.bin")):
+    #             print(f"\n发现不完整检查点 {last_checkpoint}, 跳过恢复...")
+                
+    #     except Exception as e:
+    #         print(f"\n检查点恢复失败: {str(e)}")
     
     if last_checkpoint:
         try:
@@ -214,7 +229,7 @@ def main():
                 print(f"成功加载检查点: {last_checkpoint}")
             else:
                 print(f"缺失文件: {', '.join(missing)}")
-                last_checkpoint = None
+                
         except Exception as e:
             print(f"检查点验证异常: {str(e)}")
         print(f"\n找到有效检查点 {last_checkpoint}\n包含文件: {', '.join(os.listdir(last_checkpoint))}\n")
@@ -228,30 +243,72 @@ def main():
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        # eval_dataset=eval_dataset,
         compute_metrics=compute_metrics,
         callbacks=[tensorboard_callback, EarlyStoppingCallback],
         save_strategy="steps",
         save_steps=500,
-            max_seq_length=384,  # 进一步缩短序列长度
+        max_seq_length=384,
         tokenizer=tokenizer,
+        # 显式设置检查点目录
+        output_dir=os.path.abspath("./results").replace("\\", "/")
     )
     
     # 训练前清空缓存
     torch.cuda.empty_cache()
     try:
-        trainer.train()  # 开始训练，核心步骤，占用主要GPU资源和训练时间
+        if last_checkpoint:
+            trainer.train(resume_from_checkpoint=last_checkpoint)  # 显式传递
+        else:
+            trainer.train()
         # 训练结束后打印最佳评估指标
         print(f"最佳验证损失: {trainer.state.best_metric}")
         print(f"最佳困惑度: {torch.exp(torch.tensor(trainer.state.best_metric)).item()}")
     except KeyboardInterrupt:
-        # 用户中断时保存检查点，保护训练进度，对性能无影响
-        print("\nTraining interrupted by user. Saving current checkpoint...")
-        trainer.save_model()  # 保存模型权重
-        trainer.save_state()  # 保存训练状态
-        model.save_pretrained("./elysia_model")  # 保存最终模型到指定目录
-        print("Checkpoint saved successfully.")
-        sys.exit(0)  # 退出程序
+        # 创建独立的中断检查点目录
+        from datetime import datetime
+        global interrupt_dir
+        interrupt_dir = os.path.abspath(
+            os.path.join(
+                "results",
+                f"checkpoint-{trainer.state.global_step}"
+            )
+        ).replace("\\", "/")
+        os.makedirs(interrupt_dir, exist_ok=True)
+        os.makedirs(interrupt_dir, exist_ok=True)
+        
+        print(f"\n⚠️ 用户中断训练，正在保存检查点到 {interrupt_dir}...")
+        
+            # 保存完整检查点
+            # 显式保存完整模型配置
+        trainer.model.save_pretrained(
+            interrupt_dir,
+            safe_serialization=True,
+            max_shard_size="2GB"
+        )
+        # 保存QLoRA适配器配置
+        trainer.model.peft_config['default'].save_pretrained(
+            os.path.join(interrupt_dir, "adapter_config")
+        )
+        # 统一路径处理
+        
+        interrupt_dir = os.path.abspath(interrupt_dir).replace("\\", "/")
+        # 保存QLoRA适配器配置
+        trainer.model.peft_config['default'].save_pretrained(interrupt_dir)
+        trainer.save_model(interrupt_dir)
+        trainer._save_checkpoint(trainer.model, trial=None)
+        trainer.save_model(interrupt_dir)
+        trainer.save_state()
+        
+        # 保存完整状态并释放资源
+        torch.cuda.empty_cache()
+        with open(os.path.join(interrupt_dir, "interrupt_info.txt"), "w") as f:
+            f.write(f"Interrupted at step {trainer.state.global_step}\n")
+            f.write(f"Current_epoch: {trainer.state.epoch}\n")
+            last_log = trainer.state.log_history[-1] if trainer.state.log_history else {}
+            loss_val = last_log.get('loss') or last_log.get('eval_loss') or 'N/A'
+            f.write(f"Current_loss: {loss_val}")
+        print(f"✅ 检查点已保存到 {interrupt_dir}")
+        sys.exit(0)
 
     # 训练完成后保存模型，影响磁盘空间使用
     model.save_pretrained("./elysia_model")
