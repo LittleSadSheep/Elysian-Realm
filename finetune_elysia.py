@@ -27,6 +27,13 @@ def custom_open(file, mode='r', encoding='utf-8', errors='ignore', **kwargs):
         return _original_open(file, mode=mode, encoding=encoding, errors=errors, **kwargs)
 builtins.open = custom_open  # 替换内置open函数
 
+# 在评估回调中添加
+from transformers import TrainerCallback
+
+class CleanCacheCallback(TrainerCallback):
+    def on_evaluate(self, args, state, control, **kwargs):
+        torch.cuda.empty_cache()
+
 def main():
     # 加载模型和分词器
     # 模型名称/路径，选择4bit量化版本以减少GPU内存占用，直接影响模型性能和GPU内存使用
@@ -81,27 +88,34 @@ def main():
         output_dir="./results",  # 训练结果保存目录，对性能无影响
 
         resume_from_checkpoint=True,  # 启用检查点续传，不影响性能但影响训练连续性
-        save_strategy="steps",  # 按步数保存检查点，影响磁盘I/O和训练中断恢复能力
-        save_steps=500,  # 每500步保存一次，频繁保存增加磁盘I/O但降低中断风险
-        save_total_limit=3,  # 最多保留3个检查点，影响磁盘空间占用
+        save_strategy="steps",
+        save_steps=500,
+        save_total_limit=2,  # 限制为2个最新检查点
+        save_safetensors=True,
+        remove_unused_columns=False,  # 修复评估阶段的数据列问题
+        
+        # 添加检查点验证条件
+
 
         num_train_epochs=4,  # 训练轮数，影响训练总时间和模型收敛程度（轮数越多可能过拟合）
-        per_device_train_batch_size=26,  # 每个设备的批大小，影响GPU内存使用（越大占用越多）和训练速度（越大越快）
-        gradient_accumulation_steps=1,  # 梯度累积步数，1表示不累积，增大可模拟大批次但不增加显存使用
-        learning_rate=5e-5,  # 学习率，影响模型收敛速度和最终性能（过大可能不收敛，过小收敛慢）
-        # 根据GPU是否支持bfloat16选择精度，影响GPU内存使用和计算速度
+        per_device_train_batch_size=12,  # 减小批次大小以降低显存峰值
+        gradient_accumulation_steps=2,  # 增加梯度累积补偿批次减小
+        learning_rate=2e-5,  # 适当降低学习率
+        optim="paged_adamw_8bit",  # 启用分页优化器减少内存碎片
         fp16 = not torch.cuda.is_bf16_supported(),
         bf16 = torch.cuda.is_bf16_supported(),
-        max_grad_norm = 0.3,  # 梯度裁剪阈值，防止梯度爆炸，影响训练稳定性
-        dataloader_num_workers = 8,  # 数据加载进程数，影响CPU内存使用和数据加载速度（过多可能占用大量CPU）
-        dataloader_persistent_workers = True,  # 保持数据加载进程，减少重复初始化开销，加快训练速度
+        max_grad_norm = 0.3,
+        dataloader_num_workers = 4,  # 减少worker数量缓解内存压力
+        dataloader_persistent_workers = False,  # 禁用持久worker释放内存
+        gradient_checkpointing=True,  # 启用梯度检查点
         dataloader_pin_memory = True,  # 固定内存到GPU，加速数据传输，影响GPU内存使用（微小）
         warmup_ratio = 0.03,  # 学习率预热比例，3%步数用于预热，影响模型收敛稳定性
         logging_dir="./logs",  # 日志保存目录，对性能无影响
         logging_steps=50,  # 每50步记录一次日志，影响磁盘I/O（微小）
-        optim="adamw_torch",  # 使用标准优化器减少内存碎片化，提升计算效率
+        # optim="adamw_torch",  # 使用标准优化器减少内存碎片化，提升计算效率
         # optim="paged_adamw_8bit"  # 使用8bit分页优化器，显著节省GPU内存（约50%），训练速度略有降低
-        # 新增评估配置
+        # 新增评估批次参数
+        per_device_eval_batch_size=8,  # 使用比训练更小的批次
         eval_strategy="steps",  # 按步数进行评估（原evaluation_strategy已重命名）
         eval_steps=500,  # 每500步评估一次
         metric_for_best_model="eval_loss",  # 以验证损失作为最佳模型指标
@@ -129,29 +143,39 @@ def main():
     # 导入检查点工具，用于恢复训练
     from transformers.trainer_utils import get_last_checkpoint
     # 获取最后一个检查点路径，影响训练恢复能力
-    last_checkpoint = get_last_checkpoint("./results")
-    if last_checkpoint is not None:
-        print(f"""
-
-=== 发现历史检查点 {last_checkpoint}，自动恢复训练 ===
-
-""")
+    # 增强版检查点恢复
+    last_checkpoint = None
+    if os.path.exists("./results"):
+        try:
+            last_checkpoint = get_last_checkpoint("./results")
+            if last_checkpoint and not os.path.exists(os.path.join(last_checkpoint, "training_args.bin")):
+                print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 跳过恢复...")
+                last_checkpoint = None
+        except Exception as e:
+            print(f"\n⚠️ 检查点恢复失败: {str(e)}")
+    
+    if last_checkpoint:
+        print(f"\n✅ 找到有效检查点 {last_checkpoint}\n包含文件: {', '.join(os.listdir(last_checkpoint))}\n")
+    else:
+        print("\n⏩ 未找到有效检查点，开始全新训练\n")
 
     # 初始化并运行训练器
     trainer = SFTTrainer(
-        model=model,  # 待训练模型
-
-        args=training_args,  # 训练参数配置
-        train_dataset=train_dataset,  # 训练数据集
-        eval_dataset=eval_dataset,  # 验证数据集
-        compute_metrics=compute_metrics,  # 添加评估指标计算
-        callbacks=[tensorboard_callback, EarlyStoppingCallback],  # 添加TensorBoard回调
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        compute_metrics=compute_metrics,
+        callbacks=[tensorboard_callback, EarlyStoppingCallback],
         save_strategy="steps",
         save_steps=500,
-        resume_from_checkpoint=last_checkpoint,  # 从检查点恢复
-        max_seq_length=512,  # SFT训练的最大序列长度，覆盖前面的2048，影响GPU内存使用
-        tokenizer=tokenizer,  # 分词器
+        resume_from_checkpoint=last_checkpoint,
+        max_seq_length=384,  # 进一步缩短序列长度
+        tokenizer=tokenizer,
     )
+    
+    # 训练前清空缓存
+    torch.cuda.empty_cache()
     try:
         trainer.train()  # 开始训练，核心步骤，占用主要GPU资源和训练时间
         # 训练结束后打印最佳评估指标
