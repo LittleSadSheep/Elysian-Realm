@@ -128,6 +128,10 @@ def main():
     train_dataset = dataset["train"]
     eval_dataset = dataset["test"]
 
+    # 打印数据集大小，便于调试
+    print(f"训练集样本数: {len(train_dataset)}")
+    print(f"验证集样本数: {len(eval_dataset)}")
+
     # 设置训练参数，全面影响训练速度、模型性能和资源使用
     training_args = TrainingArguments(
         output_dir="./results",  # 训练结果保存目录，对性能无影响
@@ -141,10 +145,10 @@ def main():
         # 添加检查点验证条件
 
 
-        num_train_epochs=4,  # 训练轮数，影响训练总时间和模型收敛程度（轮数越多可能过拟合）
+        num_train_epochs=20,  # 训练轮数，影响训练总时间和模型收敛程度（轮数越多可能过拟合）
         per_device_train_batch_size=12,  # 减小批次大小以降低显存峰值
         gradient_accumulation_steps=2,  # 增加梯度累积补偿批次减小
-        learning_rate=2e-5,  # 适当降低学习率
+        learning_rate=2e-5,                # 降低学习率
         optim="adamw_torch",  #  使用标准优化器减少内存碎片化，提升计算效率
         fp16 = not torch.cuda.is_bf16_supported(),
         bf16 = torch.cuda.is_bf16_supported(),
@@ -160,7 +164,7 @@ def main():
         # optim="adamw_torch",  # 使用标准优化器减少内存碎片化，提升计算效率
         # optim="paged_adamw_8bit"  # 使用8bit分页优化器，显著节省GPU内存（约50%），训练速度略有降低
         # 新增评估批次参数
-        per_device_eval_batch_size=4,  # 从8减半以降低显存压力
+        per_device_eval_batch_size=8,
         eval_strategy="steps",  # 按步数进行评估（原evaluation_strategy已重命名）
         eval_steps=100,  # 每500步评估一次
         metric_for_best_model="eval_loss",  # 以验证损失作为最佳模型指标
