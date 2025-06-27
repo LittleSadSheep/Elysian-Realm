@@ -1,7 +1,9 @@
-# 往事乐土 Elysian-Realm
-**回应我吧，爱莉希雅！！**
+
+# 往事乐土 Elysian-Realm <img align="right" src="./Elysia.jpg" width="200"/>
+**回应我吧，爱莉希雅！！**</br>
 **赐予爱莉希雅——第二次生命！！**
-![Elysia](./Elysia.jpg)
+
+
 ## 训练模型
 ### 环境配置
 - Python 3.10
