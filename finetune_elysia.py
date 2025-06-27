@@ -2,6 +2,11 @@ import sys
 import io
 import os
 import builtins
+import os
+import os
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"  # 禁用oneDNN警告
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  # 增强显存管理
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "garbage_collection_threshold:0.9,max_split_size_mb:512"
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 # 导入Unsloth的FastLanguageModel，用于高效加载和训练模型，影响模型加载速度和GPU内存使用
 from unsloth import FastLanguageModel
@@ -29,9 +34,13 @@ builtins.open = custom_open  # 替换内置open函数
 
 # 在评估回调中添加
 from transformers import TrainerCallback
+import psutil
 
-class CleanCacheCallback(TrainerCallback):
+class MemoryMonitorCallback(TrainerCallback):
     def on_evaluate(self, args, state, control, **kwargs):
+        process = psutil.Process()
+        mem_info = process.memory_info()
+        print(f"\n评估阶段内存使用：RSS={mem_info.rss//1024//1024}MB, VMS={mem_info.vms//1024//1024}MB")
         torch.cuda.empty_cache()
     def on_prediction_step(self, args, state, control, **kwargs):
         torch.cuda.empty_cache()
@@ -46,7 +55,8 @@ def main():
                 "training_args.bin",
                 "optimizer.pt",
                 "scheduler.pt",
-                "trainer_state.json"
+                "trainer_state.json",
+                "rng_state.pth"  # 新增必要文件
             ]
             if last_checkpoint and not all(os.path.exists(os.path.join(last_checkpoint, f)) for f in required_files):
                 print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 跳过恢复...")
@@ -152,16 +162,38 @@ def main():
     # 定义评估指标计算函数（困惑度）
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
+        # 处理可能的元组输出
+        if isinstance(logits, tuple):
+            logits = logits[0]
+        
+        # 转换numpy数组为tensor
+        if not torch.is_tensor(logits):
+            logits = torch.tensor(logits, dtype=torch.float32)
+        if not torch.is_tensor(labels):
+            labels = torch.tensor(labels, dtype=torch.long)
+        
+        # 确保维度匹配
+        if len(logits.shape) == 3:
+            logits = logits.reshape(-1, logits.shape[-1])
+        if len(labels.shape) == 2:
+            labels = labels.reshape(-1)
+        
+        # 过滤无效标签
+        valid_indices = labels != -100
+        logits = logits[valid_indices]
+        labels = labels[valid_indices]
+        
+        # 计算损失和困惑度
         loss = torch.nn.functional.cross_entropy(
-            logits.view(-1, logits.size(-1)), 
-            labels.view(-1),
-            ignore_index=-100  # 忽略填充标记
+            logits,
+            labels,
+            ignore_index=-100
         )
-        perplexity = torch.exp(loss).item()  # 困惑度=exp(loss)
+        perplexity = torch.exp(loss).item()
         return {"perplexity": perplexity, "eval_loss": loss.item()}
 
     # 导入检查点工具，用于恢复训练
-    from transformers.trainer_utils import get_last_checkpoint
+    from transformers.trainer_utils import get_last_checkpoint  # 显式导入
     # 获取最后一个检查点路径，影响训练恢复能力
     # 增强版检查点恢复
     last_checkpoint = None
@@ -175,6 +207,16 @@ def main():
             print(f"\n检查点恢复失败: {str(e)}")
     
     if last_checkpoint:
+        try:
+            # 验证检查点完整性
+            missing = [f for f in required_files if not os.path.exists(os.path.join(last_checkpoint, f))]
+            if not missing:
+                print(f"成功加载检查点: {last_checkpoint}")
+            else:
+                print(f"缺失文件: {', '.join(missing)}")
+                last_checkpoint = None
+        except Exception as e:
+            print(f"检查点验证异常: {str(e)}")
         print(f"\n找到有效检查点 {last_checkpoint}\n包含文件: {', '.join(os.listdir(last_checkpoint))}\n")
     else:
         print("\n未找到有效检查点，开始全新训练\n")
@@ -213,8 +255,11 @@ def main():
 
     # 训练完成后保存模型，影响磁盘空间使用
     model.save_pretrained("./elysia_model")
-    trainer.get_train_dataloader().prefetch_factor = 1  # 训练集
-    if trainer.get_eval_dataloader() is not None:
+    
+    # 训练前优化数据加载
+    if hasattr(trainer, 'get_train_dataloader'):
+        trainer.get_train_dataloader().prefetch_factor = 1
+    if hasattr(trainer, 'get_eval_dataloader') and trainer.get_eval_dataloader() is not None:
         trainer.get_eval_dataloader().prefetch_factor = 1  # 评估集
 
 if __name__ == '__main__':
