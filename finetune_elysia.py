@@ -35,6 +35,23 @@ class CleanCacheCallback(TrainerCallback):
         torch.cuda.empty_cache()
 
 def main():
+    # 检查点恢复逻辑前置
+    last_checkpoint = None
+    if os.path.exists("./results"):
+        try:
+            last_checkpoint = get_last_checkpoint("./results")
+            required_files = [
+                "training_args.bin",
+                "optimizer.pt",
+                "scheduler.pt",
+                "trainer_state.json"
+            ]
+            if last_checkpoint and not all(os.path.exists(os.path.join(last_checkpoint, f)) for f in required_files):
+                print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 跳过恢复...")
+                last_checkpoint = None
+        except Exception as e:
+            print(f"\n⚠️ 检查点恢复失败: {str(e)}")
+
     # 加载模型和分词器
     # 模型名称/路径，选择4bit量化版本以减少GPU内存占用，直接影响模型性能和GPU内存使用
     model_name = "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"
@@ -87,7 +104,7 @@ def main():
     training_args = TrainingArguments(
         output_dir="./results",  # 训练结果保存目录，对性能无影响
 
-        resume_from_checkpoint=True,  # 启用检查点续传，不影响性能但影响训练连续性
+        resume_from_checkpoint=last_checkpoint,  # 使用前置逻辑设置的检查点
         save_strategy="steps",
         save_steps=500,
         save_total_limit=2,  # 限制为2个最新检查点
@@ -149,15 +166,15 @@ def main():
         try:
             last_checkpoint = get_last_checkpoint("./results")
             if last_checkpoint and not os.path.exists(os.path.join(last_checkpoint, "training_args.bin")):
-                print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 跳过恢复...")
+                print(f"\n发现不完整检查点 {last_checkpoint}, 跳过恢复...")
                 last_checkpoint = None
         except Exception as e:
-            print(f"\n⚠️ 检查点恢复失败: {str(e)}")
+            print(f"\n检查点恢复失败: {str(e)}")
     
     if last_checkpoint:
-        print(f"\n✅ 找到有效检查点 {last_checkpoint}\n包含文件: {', '.join(os.listdir(last_checkpoint))}\n")
+        print(f"\n找到有效检查点 {last_checkpoint}\n包含文件: {', '.join(os.listdir(last_checkpoint))}\n")
     else:
-        print("\n⏩ 未找到有效检查点，开始全新训练\n")
+        print("\n未找到有效检查点，开始全新训练\n")
 
     # 初始化并运行训练器
     trainer = SFTTrainer(
@@ -169,8 +186,7 @@ def main():
         callbacks=[tensorboard_callback, EarlyStoppingCallback],
         save_strategy="steps",
         save_steps=500,
-        resume_from_checkpoint=last_checkpoint,
-        max_seq_length=384,  # 进一步缩短序列长度
+            max_seq_length=384,  # 进一步缩短序列长度
         tokenizer=tokenizer,
     )
     
