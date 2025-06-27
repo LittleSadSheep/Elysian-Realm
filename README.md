@@ -1,5 +1,5 @@
 
-# 往事乐土 Elysian-Realm <img align="right" src="./Elysia.jpg" width="200"/>
+# 往事乐土 Elysian-Realm <img align="right" src="./Elysia.jpg" width="320"/>
 **回应我吧，爱莉希雅！！**</br>
 **赐予爱莉希雅——第二次生命！！**
 
