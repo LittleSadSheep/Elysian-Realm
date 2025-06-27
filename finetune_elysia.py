@@ -33,6 +33,8 @@ from transformers import TrainerCallback
 class CleanCacheCallback(TrainerCallback):
     def on_evaluate(self, args, state, control, **kwargs):
         torch.cuda.empty_cache()
+    def on_prediction_step(self, args, state, control, **kwargs):
+        torch.cuda.empty_cache()
 
 def main():
     # 检查点恢复逻辑前置
@@ -122,7 +124,8 @@ def main():
         fp16 = not torch.cuda.is_bf16_supported(),
         bf16 = torch.cuda.is_bf16_supported(),
         max_grad_norm = 0.3,
-        dataloader_num_workers = 4,  # 减少worker数量缓解内存压力
+        dataloader_num_workers = 2,  # 评估阶段进一步减少worker
+        # prefetch_factor = 1,  # 降低预取批次数量
         dataloader_persistent_workers = False,  # 禁用持久worker释放内存
         gradient_checkpointing=True,  # 启用梯度检查点
         dataloader_pin_memory = True,  # 固定内存到GPU，加速数据传输，影响GPU内存使用（微小）
@@ -132,9 +135,9 @@ def main():
         # optim="adamw_torch",  # 使用标准优化器减少内存碎片化，提升计算效率
         # optim="paged_adamw_8bit"  # 使用8bit分页优化器，显著节省GPU内存（约50%），训练速度略有降低
         # 新增评估批次参数
-        per_device_eval_batch_size=8,  # 使用比训练更小的批次
+        per_device_eval_batch_size=4,  # 从8减半以降低显存压力
         eval_strategy="steps",  # 按步数进行评估（原evaluation_strategy已重命名）
-        eval_steps=500,  # 每500步评估一次
+        eval_steps=100,  # 每500步评估一次
         metric_for_best_model="eval_loss",  # 以验证损失作为最佳模型指标
         load_best_model_at_end=True,  # 训练结束时加载最佳模型
 
@@ -178,10 +181,12 @@ def main():
 
     # 初始化并运行训练器
     trainer = SFTTrainer(
+        eval_dataset=eval_dataset.select(range(100)),  # 限制评估样本数量
+        max_eval_samples=100,  # 限制最大评估样本
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
+        # eval_dataset=eval_dataset,
         compute_metrics=compute_metrics,
         callbacks=[tensorboard_callback, EarlyStoppingCallback],
         save_strategy="steps",
@@ -208,6 +213,9 @@ def main():
 
     # 训练完成后保存模型，影响磁盘空间使用
     model.save_pretrained("./elysia_model")
+    trainer.get_train_dataloader().prefetch_factor = 1  # 训练集
+    if trainer.get_eval_dataloader() is not None:
+        trainer.get_eval_dataloader().prefetch_factor = 1  # 评估集
 
 if __name__ == '__main__':
     import multiprocessing  # 多进程模块，用于Windows系统支持
