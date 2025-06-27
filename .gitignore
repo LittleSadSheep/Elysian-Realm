@@ -1,0 +1,8 @@
+/.venv
+/absolute
+/elysia_model
+/import torch.py
+/results
+/test_model.py
+/training_data.txt
+/unsloth_compiled_cache
