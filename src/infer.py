@@ -52,19 +52,17 @@ def launch_gradio(port: int = 7861):
         tokenizer.pad_token = tokenizer.eos_token
 
     def user_fn(user_message, history):
-        response = infer(user_message, model, tokenizer, history)
-        # 修正：gr.Chatbot(type='messages') 需要 [{'role':..., 'content':...}, ...] 格式
-        if history is None:
+        # history: List[List[dict]]，每组为一轮对话
+        if history is None or len(history) == 0:
             history = []
-        history = history + [{"role": "user", "content": user_message}, {"role": "assistant", "content": response}]
-        # 返回格式应为 List[List[dict]]，每轮对话为一组user/assistant消息
-        # 但gradio expects List[List[dict]]，每组为一轮对话
-        # 所以需要将history按对话轮分组
-        grouped = []
-        for i in range(0, len(history), 2):
-            if i+1 < len(history):
-                grouped.append([history[i], history[i+1]])
-        return grouped, history
+        # 新一轮对话
+        response = infer(user_message, model, tokenizer)
+        # 按gradio要求，每轮为[{"role": "user", ...}, {"role": "assistant", ...}]
+        history = history + [[
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": response}
+        ]]
+        return history, history
 
     with gr.Blocks() as demo:
         gr.Markdown("# 爱莉希雅对话演示")
@@ -88,5 +86,7 @@ if __name__ == "__main__":
 
     if args.mode == "cli":
         infer_main()
+    elif args.mode == "web":
+        launch_gradio(port=7870)
     elif args.mode == "web":
         launch_gradio(port=7870)

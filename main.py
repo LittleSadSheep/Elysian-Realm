@@ -8,11 +8,10 @@ from src.infer import launch_gradio, infer_main
 from src.tune import tune_main
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Elysia LLM 微调/推理/调参主入口")
+    parser = argparse.ArgumentParser(description="Elysian-Realm 微调/推理/调参主入口")
     parser.add_argument(
         "--mode",
         choices=["train", "infer", "web", "tune"],
-        default="web",
         help="运行模式，可选: train(训练), infer(命令行推理), web(Gradio网页), tune(超参数搜索)"
     )
     args = parser.parse_args()
@@ -26,5 +25,5 @@ if __name__ == "__main__":
     elif args.mode == "tune":
         tune_main()
     else:
-        print(f"未知模式: {args.mode}，请使用 train, infer, web 或 tune")
+        print("请指定有效的运行模式：train, infer, web, tune")
         parser.print_help()
