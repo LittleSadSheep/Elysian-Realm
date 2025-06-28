@@ -97,7 +97,7 @@ def main():
     # 从预训练模型加载并应用量化配置，影响模型加载速度和初始GPU内存占用
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name,
-        max_seq_length = 1024,  # 降低序列长度
+        max_seq_length = 8192,  # 降低序列长度
         dtype = torch.bfloat16,
         token = None,
         device_map = "auto",
@@ -119,7 +119,7 @@ def main():
     # 定义 LoRA 配置，影响模型微调效率和参数更新
     model = FastLanguageModel.get_peft_model(
         model,
-        r=8,  # LoRA注意力维度，影响模型微调能力和参数数量（r越大能力越强但参数越多）
+        r=32,  # LoRA注意力维度，影响模型微调能力和参数数量（r越大能力越强但参数越多）
         # 指定LoRA应用的目标模块，影响模型微调效果和GPU内存使用
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
@@ -128,9 +128,10 @@ def main():
         bias="none",  # 是否训练偏置参数，"none"表示不训练，减少参数数量和显存使用
         use_gradient_checkpointing=True,  # 启用梯度检查点，节省GPU显存（约50%）但训练速度降低10-20%
         random_state=3407,  # 随机种子，保证训练可复现性，对性能无影响
-        max_seq_length=1024,  # 最大序列长度，需与前面保持一致
+        max_seq_length=8192,  # 最大序列长度，需与前面保持一致
         use_rslora=False,  # 禁用RS-LoRA，启用会改变LoRA更新方式，对性能影响因任务而异
         loftq_config=None,  # 禁用LoftQ量化，启用会进一步降低显存但可能影响精度
+
     )
 
     # 加载ShareGPT格式数据集
@@ -172,7 +173,7 @@ def main():
         # max_steps=10000,  # 新增：最多训练10000步（可根据需要调整）
         per_device_train_batch_size=2,  # 显著降低
         gradient_accumulation_steps=1,  # 降低
-        learning_rate=2e-5,                # 降低学习率
+        learning_rate=5e-5,                # 降低学习率
         optim="adamw_torch",  #  使用标准优化器减少内存碎片化，提升计算效率
         fp16 = not torch.cuda.is_bf16_supported(),
         bf16 = torch.cuda.is_bf16_supported(),
@@ -182,7 +183,7 @@ def main():
         dataloader_persistent_workers = False,  # 禁用持久worker释放内存
         gradient_checkpointing=True,  # 启用梯度检查点
         dataloader_pin_memory = True,  # 固定内存到GPU，加速数据传输，影响GPU内存使用（微小）
-        warmup_ratio = 0.03,  # 学习率预热比例，3%步数用于预热，影响模型收敛稳定性
+        warmup_ratio = 0.01,  # 学习率预热比例，3%步数用于预热，影响模型收敛稳定性
         logging_dir="./logs",  # 日志保存目录，对性能无影响
         logging_steps=50,  # 每50步记录一次日志，影响磁盘I/O（微小）
         # optim="adamw_torch",  # 使用标准优化器减少内存碎片化，提升计算效率
@@ -193,7 +194,7 @@ def main():
         eval_steps=100,  # 每500步评估一次
         metric_for_best_model="eval_loss",  # 以验证损失作为最佳模型指标
         load_best_model_at_end=True,  # 训练结束时加载最佳模型
-
+        gguf_dir = "ggufs",  # 新增：保存GGUF格式模型目录
         report_to="tensorboard",  # 启用TensorBoard可视化
     )
 
@@ -275,7 +276,7 @@ def main():
         callbacks=[tensorboard_callback, EarlyStoppingCallback],
         save_strategy="steps",
         save_steps=500,
-        max_seq_length=1024,  # 保持一致
+        max_seq_length=8192,  # 保持一致
         tokenizer=tokenizer,
         output_dir=os.path.abspath("./results").replace("\\", "/"),
         formatting_func=formatting_prompts_func  # 修正：传入函数而不是字符串
