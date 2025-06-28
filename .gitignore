@@ -2,11 +2,13 @@
 /logs
 /absolute
 /elysia_model
+/elysia_model_fp16
 /results
 /training_data.txt
 /unsloth_compiled_cache
 /也许吧.txt
 /backups
+/offload
 /data.json
 /dataset_info.json
 /_unsloth_temporary_saved_buffers

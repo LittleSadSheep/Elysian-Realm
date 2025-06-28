@@ -1,22 +1,25 @@
-from transformers import AutoTokenizer
-from unsloth import FastLanguageModel
-import torch
-# 1. 加载全精度基础模型
-base_model_name = "mistral-7b-instruct-v0.3"  # 不要带bnb-4bit
-model, tokenizer = FastLanguageModel.from_pretrained(
-    base_model_name,
-    max_seq_length=8192,
-    dtype=torch.float16,  # 修正此处
-    device_map="auto"
-)
-
-# 2. 加载LoRA adapter
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
-model = PeftModel.from_pretrained(model, "./elysia_model")
+import torch
 
-# 3. 合并LoRA权重
+base_model_name = "mistralai/Mistral-7B-Instruct-v0.3"  # 官方原生模型
+model = AutoModelForCausalLM.from_pretrained(
+    base_model_name,
+    torch_dtype=torch.float16,
+    device_map="cpu"  # 强制全CPU
+)
+tokenizer = AutoTokenizer.from_pretrained(base_model_name)
+
+# 加载LoRA adapter
+model = PeftModel.from_pretrained(
+    model,
+    "./elysia_model",
+    device_map="cpu"  # 强制全CPU
+)
 model = model.merge_and_unload()
 
-# 4. 保存为标准HF格式
+# 保存为标准HF格式
+model.save_pretrained("./elysia_model_fp16", safe_serialization=True)
+tokenizer.save_pretrained("./elysia_model_fp16")
 model.save_pretrained("./elysia_model_fp16", safe_serialization=True)
 tokenizer.save_pretrained("./elysia_model_fp16")
