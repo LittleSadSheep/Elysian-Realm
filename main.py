@@ -22,6 +22,6 @@ if __name__ == "__main__":
     elif args.mode == "infer":
         infer_main()
     elif args.mode == "web":
-        launch_gradio()
+        launch_gradio(port=7861)  # 指定新端口
     elif args.mode == "tune":
         tune_main()
