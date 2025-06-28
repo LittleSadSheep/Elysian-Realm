@@ -12,16 +12,16 @@
 ## 使用方法
 
 ### 1. 准备运行环境
-   - 安装python ~~去官网下，这不用我教吧~~
-   - 安装依赖
+- 安装python ~~去官网下，这不用我教吧~~
+- 安装依赖
    ```BASH
       pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
       pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
    ```
 
 ### 2. 准备数据集
-   - 你需要在根目录下准备好数据集，格式**严格遵循**`ShareGPT Fomat`，并将其保存在项目根目录下，保存为`json`格式<br>
-      以下是例子：<br>
+- 你需要在根目录下准备好数据集，格式**严格遵循**`ShareGPT Fomat`，并将其保存在项目根目录下，保存为`json`格式<br>
+- 以下是例子：<br>
    ```JSON
       [
          {
@@ -43,7 +43,7 @@
       ]
    ```
 ### 3. 调整训练参数并启动微调训练 
-   - 运行`finetune_elysia.py`启动模型微调
+- 运行`finetune_elysia.py`启动模型微调
    ```bash
    python ./finetune_elysia.py
    ```
@@ -93,11 +93,11 @@
   - 验证集loss早早不降：可减少epoch或增大early stopping耐心。
 
 ### 5. 简单测试模型
-   - 你可使用`test_model.py`对模型进行简单测试
+- 你可使用`test_model.py`对模型进行简单测试
    ```bash
    python ./test_model.py
    ```
-   - 在显示`请输入：`时可以进行输入
+- 在显示`请输入：`时可以进行输入
 ### 6. 导出GGUF格式（llama.cpp推理）合并LoRA权重并导出FP16模型
 
 - 训练完成后，运行`merge_lora_to_fp16.py`将LoRA权重合并到全精度基础模型，导出标准HuggingFace格式：
