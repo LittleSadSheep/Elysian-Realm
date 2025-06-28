@@ -120,19 +120,17 @@ def main():
     # 定义 LoRA 配置，影响模型微调效率和参数更新
     model = FastLanguageModel.get_peft_model(
         model,
-        r=48,  # 增大LoRA维度
-        lora_alpha=72,  # 增大LoRA缩放
-        # 指定LoRA应用的目标模块，影响模型微调效果和GPU内存使用
+        r=24,  # 增大LoRA维度
+        lora_alpha=48,  # 增大LoRA缩放
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_dropout=0.3,  # LoRA dropout率，防止过拟合，对模型泛化能力有影响
-        bias="none",  # 是否训练偏置参数，"none"表示不训练，减少参数数量和显存使用
-        use_gradient_checkpointing=True,  # 启用梯度检查点，节省GPU显存（约50%）但训练速度降低10-20%
-        random_state=3407,  # 随机种子，保证训练可复现性，对性能无影响
-        max_seq_length=32768,  # 最大序列长度，需与前面保持一致
-        use_rslora=False,  # 禁用RS-LoRA，启用会改变LoRA更新方式，对性能影响因任务而异
-        loftq_config=None,  # 禁用LoftQ量化，启用会进一步降低显存但可能影响精度
-
+        lora_dropout=0.12,  # 建议0.1~0.3，防止过拟合
+        bias="none",
+        use_gradient_checkpointing=True,
+        random_state=3407,
+        max_seq_length=32768,
+        use_rslora=False,
+        loftq_config=None,
     )
 
     # 加载ShareGPT格式数据集
@@ -166,10 +164,10 @@ def main():
         save_total_limit=2,  # 限制为2个最新检查点
         save_safetensors=True,
         remove_unused_columns=False,
-        num_train_epochs=20,  # 增大轮数
-        per_device_train_batch_size=2,  # 增大batch size
-        gradient_accumulation_steps=2,  # 配合batch size，适当累积
-        learning_rate=7e-6,  # 更小学习率 1e-5
+        num_train_epochs=7,  # 增大轮数
+        per_device_train_batch_size=4,  # 增大batch size
+        gradient_accumulation_steps=4,  # 配合batch size，适当累积
+        learning_rate=2e-5,  # 更小学习率 1e-5
         optim="adamw_torch",
         fp16 = not torch.cuda.is_bf16_supported(),
         bf16 = torch.cuda.is_bf16_supported(),
@@ -179,7 +177,7 @@ def main():
         dataloader_persistent_workers = False,  # 禁用持久worker释放内存
         gradient_checkpointing=True,  # 启用梯度检查点
         dataloader_pin_memory = True,  # 固定内存到GPU，加速数据传输，影响GPU内存使用（微小）
-        warmup_ratio = 0.05,  # 学习率预热比例，3%步数用于预热，影响模型收敛稳定性
+        warmup_ratio = 0.1,  # 学习率预热比例，3%步数用于预热，影响模型收敛稳定性
         logging_dir="./logs",  # 日志保存目录，对性能无影响
         logging_steps=5,  # 每50步记录一次日志，影响磁盘I/O（微小）
         # optim="adamw_torch",  # 使用标准优化器减少内存碎片化，提升计算效率
@@ -197,7 +195,7 @@ def main():
     from transformers.integrations import TensorBoardCallback
     from transformers import EarlyStoppingCallback
     tensorboard_callback = TensorBoardCallback()
-    early_stopping_callback = EarlyStoppingCallback(early_stopping_patience=3)  # 更稳健
+    early_stopping_callback = EarlyStoppingCallback(early_stopping_patience=5)  # 更稳健
 
     # 定义评估指标计算函数（困惑度）
     def compute_metrics(eval_pred):
