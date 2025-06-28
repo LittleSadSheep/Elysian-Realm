@@ -53,6 +53,142 @@ class MemoryMonitorCallback(TrainerCallback):
         torch.cuda.empty_cache()
 
 
+import wandb  # 新增：WandB集成
+import nlpaug.augmenter.word as naw  # 新增：nlpaug数据增强
+import gradio as gr  # 新增：Gradio界面
+import optuna  # 新增：Optuna超参数搜索
+from sklearn.metrics import accuracy_score, recall_score, f1_score  # 新增：详细评估
+
+# ========== 数据增强函数 ==========
+def augment_texts(texts, aug=None):
+    if aug is None:
+        aug = naw.SynonymAug(aug_src='wordnet')
+    return [aug.augment(t) for t in texts]
+
+# ========== 数据预处理修复 ==========
+def formatting_prompts_func(examples):
+    convos = examples["conversations"]
+    texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) + tokenizer.eos_token for convo in convos]
+    return {"text": texts}
+
+# ========== 推理函数 ==========
+def infer(user_input, history=None):
+    if history is None:
+        history = []
+    # 构造对话格式
+    prompt = tokenizer.apply_chat_template(
+        [{"role": "user", "content": user_input}],
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=128,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.95,
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.pad_token_id
+        )
+    response = tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+    return response.strip()
+
+# ========== Gradio界面 ==========
+def launch_gradio():
+    with gr.Blocks() as demo:
+        gr.Markdown("# 爱莉希雅对话演示")
+        chatbot = gr.Chatbot()
+        msg = gr.Textbox(label="输入你的对话")
+        clear = gr.Button("清空")
+        state = gr.State([])
+        def user_fn(user_message, history):
+            response = infer(user_message, history)
+            history = history + [[user_message, response]]
+            return history, history
+        msg.submit(user_fn, [msg, state], [chatbot, state])
+        clear.click(lambda: ([], []), None, [chatbot, state])
+    demo.launch()
+
+# ========== 超参数搜索空间 ==========
+def objective(trial):
+    # 搜索空间
+    learning_rate = trial.suggest_loguniform("learning_rate", 1e-6, 5e-4)
+    per_device_train_batch_size = trial.suggest_categorical("per_device_train_batch_size", [2, 4, 8])
+    lora_r = trial.suggest_categorical("lora_r", [8, 16, 32])
+    lora_alpha = trial.suggest_categorical("lora_alpha", [16, 32, 64])
+    lora_dropout = trial.suggest_uniform("lora_dropout", 0.05, 0.3)
+    # LoRA配置
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r=lora_r,
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        # ...existing code...
+    )
+    # ...existing code...
+    training_args = TrainingArguments(
+        # ...existing code...
+        learning_rate=learning_rate,
+        per_device_train_batch_size=per_device_train_batch_size,
+        # ...existing code...
+    )
+    # ...existing code...
+    trainer = SFTTrainer(
+        # ...existing code...
+        args=training_args,
+        # ...existing code...
+    )
+    # ...existing code...
+    trainer.train()
+    eval_metrics = trainer.evaluate()
+    return eval_metrics["eval_loss"]
+
+# ========== 详细评估指标 ==========
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    # 处理可能的元组输出
+    if isinstance(logits, tuple):
+        logits = logits[0]
+    
+    # 转换numpy数组为tensor
+    if not torch.is_tensor(logits):
+        logits = torch.tensor(logits, dtype=torch.float32)
+    if not torch.is_tensor(labels):
+        labels = torch.tensor(labels, dtype=torch.long)
+    
+    # 确保维度匹配
+    if len(logits.shape) == 3:
+        logits = logits.reshape(-1, logits.shape[-1])
+    if len(labels.shape) == 2:
+        labels = labels.reshape(-1)
+    
+    # 过滤无效标签
+    valid_indices = labels != -100
+    logits = logits[valid_indices]
+    labels = labels[valid_indices]
+    
+    # 计算损失和困惑度
+    loss = torch.nn.functional.cross_entropy(
+        logits,
+        labels,
+        ignore_index=-100
+    )
+    perplexity = torch.exp(loss).item()
+
+    preds = torch.argmax(logits, dim=-1)
+    valid = labels != -100
+    preds = preds[valid].cpu().numpy()
+    labels = labels[valid].cpu().numpy()
+    acc = accuracy_score(labels, preds)
+    rec = recall_score(labels, preds, average='macro', zero_division=0)
+    f1 = f1_score(labels, preds, average='macro', zero_division=0)
+    loss = torch.nn.functional.cross_entropy(logits[valid], torch.tensor(labels), ignore_index=-100)
+    perplexity = torch.exp(loss).item()
+    return {"perplexity": perplexity, "eval_loss": loss.item(), "accuracy": acc, "recall": rec, "f1": f1}
+
+# ========== 主函数main ==========
 def main():
     # 增强版检查点恢复逻辑
     from transformers.trainer_utils import get_last_checkpoint
@@ -87,60 +223,52 @@ def main():
 
     # 加载模型和分词器
     # 模型名称/路径，选择4bit量化版本以减少GPU内存占用，直接影响模型性能和GPU内存使用
-    model_name = "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"
+    model_name = "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"  # 可更换为其它模型
     # 配置4bit量化参数，显著降低GPU内存使用（约节省75%显存），对模型精度影响较小
     bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,  # 启用4bit量化，核心参数，决定是否使用量化
-        bnb_4bit_use_double_quant=True,  # 启用双重量化，进一步减少显存占用约0.4bit/参数
-        bnb_4bit_quant_type="nf4",  # 使用NF4量化类型，专为LLM优化，精度高于普通4bit
-        bnb_4bit_compute_dtype=torch.bfloat16  # 计算时使用bfloat16精度，平衡速度和精度
+        load_in_4bit=True,  # 是否启用4bit量化
+        bnb_4bit_use_double_quant=True,  # 是否启用双重量化
+        bnb_4bit_quant_type="nf4",  # 量化类型，可选"nf4"或"fp4"
+        bnb_4bit_compute_dtype=torch.bfloat16  # 计算精度，可选torch.float16/torch.bfloat16
     )
     # 从预训练模型加载并应用量化配置，影响模型加载速度和初始GPU内存占用
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name,
-        max_seq_length = 32768,  # 降低序列长度
-        dtype = torch.bfloat16,
+        max_seq_length = 32768,  # 最大序列长度
+        dtype = torch.bfloat16,  # 加载精度
         token = None,
-        device_map = "auto",
+        device_map = "auto",  # 自动分配设备
         quantization_config = bnb_config,
     )
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template = "mistral",
+        chat_template = "mistral",  # 可选其它模板
     )
-
-    def formatting_prompts_func(examples):
-        convos = examples["conversations"]
-        texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
-        return { "text" : texts, }
-
-
-    tokenizer.pad_token = tokenizer.eos_token
 
     # 定义 LoRA 配置，影响模型微调效率和参数更新
     model = FastLanguageModel.get_peft_model(
         model,
-        r=24,  # 增大LoRA维度
-        lora_alpha=48,  # 增大LoRA缩放
+        r=16,  # LoRA秩，越大表达能力越强，显存占用也越高
+        lora_alpha=32,  # LoRA缩放系数
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                       "gate_proj", "up_proj", "down_proj"],
-        lora_dropout=0.12,  # 建议0.1~0.3，防止过拟合
-        bias="none",
-        use_gradient_checkpointing=True,
-        random_state=3407,
-        max_seq_length=32768,
-        use_rslora=False,
-        loftq_config=None,
+                       "gate_proj", "up_proj", "down_proj"],  # LoRA作用层
+        lora_dropout=0.12,  # LoRA dropout防止过拟合
+        bias="none",  # LoRA bias处理方式
+        use_gradient_checkpointing=True,  # 是否启用梯度检查点
+        random_state=3407,  # 随机种子
+        max_seq_length=32768,  # 最大序列长度
+        use_rslora=False,  # 是否使用rslora
+        loftq_config=None,  # loftq配置
     )
 
     # 加载ShareGPT格式数据集
     dataset = load_dataset(
-        path="e:/Codes/Python/Elysian-Realm",  # 指向包含data.json和dataset_info.json的目录
-        data_files="data.json"
+        path="e:/Codes/Python/Elysian-Realm",  # 数据集路径
+        data_files="data.json"  # 数据文件名
     )["train"]
 
     # 分割训练集和验证集（10%数据用于验证）
-    dataset = dataset.train_test_split(test_size=0.1, seed=42)
+    dataset = dataset.train_test_split(test_size=0.1, seed=42)  # 验证集比例和随机种子
     train_dataset = dataset["train"]
     eval_dataset = dataset["test"]
 
@@ -157,38 +285,34 @@ def main():
 
     # 设置训练参数，全面影响训练速度、模型性能和资源使用
     training_args = TrainingArguments(
-        output_dir="./results",  # 训练结果保存目录，对性能无影响
-        restore_callback_states_from_checkpoint=True,
-        save_strategy="steps",
-        save_steps=500,
-        save_total_limit=2,  # 限制为2个最新检查点
-        save_safetensors=True,
-        remove_unused_columns=False,
-        num_train_epochs=7,  # 增大轮数
-        per_device_train_batch_size=4,  # 增大batch size
-        gradient_accumulation_steps=4,  # 配合batch size，适当累积
-        learning_rate=2e-5,  # 更小学习率 1e-5
-        optim="adamw_torch",
-        fp16 = not torch.cuda.is_bf16_supported(),
-        bf16 = torch.cuda.is_bf16_supported(),
-        max_grad_norm = 0.3,
-        dataloader_num_workers = 2,  # 评估阶段进一步减少worker
-        # prefetch_factor = 1,  # 降低预取批次数量
-        dataloader_persistent_workers = False,  # 禁用持久worker释放内存
-        gradient_checkpointing=True,  # 启用梯度检查点
-        dataloader_pin_memory = True,  # 固定内存到GPU，加速数据传输，影响GPU内存使用（微小）
-        warmup_ratio = 0.1,  # 学习率预热比例，3%步数用于预热，影响模型收敛稳定性
-        logging_dir="./logs",  # 日志保存目录，对性能无影响
-        logging_steps=5,  # 每50步记录一次日志，影响磁盘I/O（微小）
-        # optim="adamw_torch",  # 使用标准优化器减少内存碎片化，提升计算效率
-        # optim="paged_adamw_8bit"  # 使用8bit分页优化器，显著节省GPU内存（约50%），训练速度略有降低
-        # 新增评估批次参数
-        per_device_eval_batch_size=8,
-        eval_strategy="steps",  # 按步数进行评估（原evaluation_strategy已重命名）
-        eval_steps=25,  # 每500步评估一次
-        metric_for_best_model="eval_loss",  # 以验证损失作为最佳模型指标
-        load_best_model_at_end=True,  # 训练结束时加载最佳模型
-        report_to="tensorboard",  # 启用TensorBoard可视化
+        output_dir="./results",  # 训练结果保存目录
+        restore_callback_states_from_checkpoint=True,  # 是否从checkpoint恢复回调状态
+        save_strategy="steps",  # 保存策略，可选"steps"或"epoch"
+        save_steps=500,  # 每多少步保存一次
+        save_total_limit=2,  # 最多保留多少个checkpoint
+        save_safetensors=True,  # 是否保存为safetensors格式
+        remove_unused_columns=False,  # 是否移除未用列
+        num_train_epochs=7,  # 训练轮数
+        per_device_train_batch_size=4,  # 单卡batch size
+        gradient_accumulation_steps=4,  # 梯度累积步数
+        learning_rate=2e-5,  # 学习率
+        optim="adamw_torch",  # 优化器类型
+        fp16 = not torch.cuda.is_bf16_supported(),  # 是否使用fp16
+        bf16 = torch.cuda.is_bf16_supported(),  # 是否使用bf16
+        max_grad_norm = 0.3,  # 梯度裁剪
+        dataloader_num_workers = 2,  # dataloader线程数
+        dataloader_persistent_workers = False,  # 是否持久化worker
+        gradient_checkpointing=True,  # 是否启用梯度检查点
+        dataloader_pin_memory = True,  # 是否pin memory
+        warmup_ratio = 0.1,  # 学习率预热比例
+        logging_dir="./logs",  # 日志目录
+        logging_steps=5,  # 日志记录步数
+        per_device_eval_batch_size=8,  # 验证集batch size
+        eval_strategy="steps",  # 验证策略
+        eval_steps=25,  # 验证步数
+        metric_for_best_model="eval_loss",  # 最佳模型指标
+        load_best_model_at_end=True,  # 是否训练结束加载最佳模型
+        report_to="tensorboard",  # 日志报告方式
     )
 
     # 添加TensorBoard回调
@@ -196,39 +320,6 @@ def main():
     from transformers import EarlyStoppingCallback
     tensorboard_callback = TensorBoardCallback()
     early_stopping_callback = EarlyStoppingCallback(early_stopping_patience=5)  # 更稳健
-
-    # 定义评估指标计算函数（困惑度）
-    def compute_metrics(eval_pred):
-        logits, labels = eval_pred
-        # 处理可能的元组输出
-        if isinstance(logits, tuple):
-            logits = logits[0]
-        
-        # 转换numpy数组为tensor
-        if not torch.is_tensor(logits):
-            logits = torch.tensor(logits, dtype=torch.float32)
-        if not torch.is_tensor(labels):
-            labels = torch.tensor(labels, dtype=torch.long)
-        
-        # 确保维度匹配
-        if len(logits.shape) == 3:
-            logits = logits.reshape(-1, logits.shape[-1])
-        if len(labels.shape) == 2:
-            labels = labels.reshape(-1)
-        
-        # 过滤无效标签
-        valid_indices = labels != -100
-        logits = logits[valid_indices]
-        labels = labels[valid_indices]
-        
-        # 计算损失和困惑度
-        loss = torch.nn.functional.cross_entropy(
-            logits,
-            labels,
-            ignore_index=-100
-        )
-        perplexity = torch.exp(loss).item()
-        return {"perplexity": perplexity, "eval_loss": loss.item()}
 
     # 导入检查点工具，用于恢复训练
     from transformers.trainer_utils import get_last_checkpoint  # 显式导入
@@ -355,4 +446,7 @@ def main():
 if __name__ == '__main__':
     import multiprocessing  # 多进程模块，用于Windows系统支持
     multiprocessing.freeze_support()  # 修复Windows下多进程问题，对性能无影响
+    # 超参数搜索（可选，注释掉则不启用）
+    # study = optuna.create_study(direction="minimize")
+    # study.optimize(objective, n_trials=10)
     main()  # 执行主函数
