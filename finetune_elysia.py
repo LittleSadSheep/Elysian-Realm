@@ -120,11 +120,11 @@ def main():
     # 定义 LoRA 配置，影响模型微调效率和参数更新
     model = FastLanguageModel.get_peft_model(
         model,
-        r=32,  # LoRA注意力维度，影响模型微调能力和参数数量（r越大能力越强但参数越多）
+        r=32,  # 增大LoRA维度
+        lora_alpha=64,  # 增大LoRA缩放
         # 指定LoRA应用的目标模块，影响模型微调效果和GPU内存使用
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=32,  # LoRA缩放参数，与r共同决定更新强度（alpha/r为学习率缩放因子）
         lora_dropout=0.05,  # LoRA dropout率，防止过拟合，对模型泛化能力有影响
         bias="none",  # 是否训练偏置参数，"none"表示不训练，减少参数数量和显存使用
         use_gradient_checkpointing=True,  # 启用梯度检查点，节省GPU显存（约50%）但训练速度降低10-20%
@@ -170,11 +170,11 @@ def main():
         # 添加检查点验证条件
 
 
-        num_train_epochs=20,  # 训练轮数，影响训练总时间和模型收敛程度（轮数越多可能过拟合）
+        num_train_epochs=3,  # 极小数据集建议3~5轮
         # max_steps=10000,  # 新增：最多训练10000步（可根据需要调整）
-        per_device_train_batch_size=2,  # 显著降低
-        gradient_accumulation_steps=1,  # 降低
-        learning_rate=5e-5,                # 降低学习率
+        per_device_train_batch_size=1,  # batch size=1更适合极小数据
+        gradient_accumulation_steps=1,  # 保持1
+        learning_rate=2e-5,  # 降低学习率
         optim="adamw_torch",  #  使用标准优化器减少内存碎片化，提升计算效率
         fp16 = not torch.cuda.is_bf16_supported(),
         bf16 = torch.cuda.is_bf16_supported(),
@@ -184,7 +184,7 @@ def main():
         dataloader_persistent_workers = False,  # 禁用持久worker释放内存
         gradient_checkpointing=True,  # 启用梯度检查点
         dataloader_pin_memory = True,  # 固定内存到GPU，加速数据传输，影响GPU内存使用（微小）
-        warmup_ratio = 0.01,  # 学习率预热比例，3%步数用于预热，影响模型收敛稳定性
+        warmup_ratio = 0.05,  # 学习率预热比例，3%步数用于预热，影响模型收敛稳定性
         logging_dir="./logs",  # 日志保存目录，对性能无影响
         logging_steps=50,  # 每50步记录一次日志，影响磁盘I/O（微小）
         # optim="adamw_torch",  # 使用标准优化器减少内存碎片化，提升计算效率
@@ -192,7 +192,7 @@ def main():
         # 新增评估批次参数
         per_device_eval_batch_size=8,
         eval_strategy="steps",  # 按步数进行评估（原evaluation_strategy已重命名）
-        eval_steps=100,  # 每500步评估一次
+        eval_steps=10,  # 每500步评估一次
         metric_for_best_model="eval_loss",  # 以验证损失作为最佳模型指标
         load_best_model_at_end=True,  # 训练结束时加载最佳模型
         report_to="tensorboard",  # 启用TensorBoard可视化
@@ -202,6 +202,7 @@ def main():
     from transformers.integrations import TensorBoardCallback
     from transformers import EarlyStoppingCallback
     tensorboard_callback = TensorBoardCallback()
+    early_stopping_callback = EarlyStoppingCallback(early_stopping_patience=2)  # 更严格
 
     # 定义评估指标计算函数（困惑度）
     def compute_metrics(eval_pred):
@@ -273,7 +274,7 @@ def main():
         args=training_args,
         train_dataset=train_dataset,
         compute_metrics=compute_metrics,
-        callbacks=[tensorboard_callback, EarlyStoppingCallback],
+        callbacks=[tensorboard_callback, early_stopping_callback],
         save_strategy="steps",
         save_steps=500,
         max_seq_length=8192,  # 保持一致
@@ -342,6 +343,9 @@ def main():
 
     # 训练完成后保存模型，影响磁盘空间使用
     # model.save_pretrained("./elysia_model")
+    # 训练完成后保存LoRA adapter
+    model.save_pretrained("./elysia_adapter")
+    tokenizer.save_pretrained("./elysia_adapter")
     # 合并LoRA权重并保存完整模型
     model = model.merge_and_unload()
     model.save_pretrained("./elysia_model", safe_serialization=True)
@@ -352,6 +356,8 @@ def main():
         trainer.get_train_dataloader().prefetch_factor = 1
     if hasattr(trainer, 'get_eval_dataloader') and trainer.get_eval_dataloader() is not None:
         trainer.get_eval_dataloader().prefetch_factor = 1  # 评估集
+
+
 
 if __name__ == '__main__':
     import multiprocessing  # 多进程模块，用于Windows系统支持

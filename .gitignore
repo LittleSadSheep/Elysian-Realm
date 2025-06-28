@@ -2,6 +2,7 @@
 /logs
 /absolute
 /elysia_model
+/elysia_adapter
 /elysia_model_fp16
 /results
 /training_data.txt
