@@ -1,4 +1,5 @@
 from unsloth import FastLanguageModel
+import re
 
 # 加载微调好的模型和分词器
 model, tokenizer = FastLanguageModel.from_pretrained("./elysia_model", device_map="auto")
@@ -13,18 +14,28 @@ SYSTEM_PROMPT = '''
 
 # 定义对话函数
 def chat_with_elysia(user_input, stop_string="</s>", system_prompt=SYSTEM_PROMPT):
-    # 拼接system prompt和用户输入
-    prompt = f"{system_prompt}\n{user_input}\n"
+    # 构造ShareGPT格式对话
+    conversation = [
+        {"role": "system", "content": system_prompt.strip()},
+        {"role": "user", "content": user_input.strip()}
+    ]
+    # 使用chat模板生成prompt
+    prompt = tokenizer.apply_chat_template(conversation, tokenize=False, add_generation_prompt=True)
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
     outputs = model.generate(
         **inputs,
-        max_new_tokens=300, #设置最大token数避免过长输出
-        eos_token_id=tokenizer.eos_token_id,  # 碰到eos token自动停止
+        max_new_tokens=300,
+        eos_token_id=tokenizer.eos_token_id,
     )
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    # 如果需要自定义Stop String
+    # 去除开头的[/INST]及其前内容
+    response = re.sub(r"^.*\[/INST\]", "", response, flags=re.DOTALL).strip()
+    # 截断stop_string
     if stop_string in response:
         response = response.split(stop_string)[0]
+    # 去掉prompt部分，只保留模型回复
+    if user_input in response:
+        response = response.split(user_input, 1)[-1].strip()
     return response
 
 # 测试对话
