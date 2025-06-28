@@ -143,8 +143,11 @@ def main():
     train_dataset = dataset["train"]
     eval_dataset = dataset["test"]
 
-    dataset = standardize_sharegpt(dataset)
-    dataset = dataset.map(formatting_prompts_func, batched = True,)
+    # 分别标准化和格式化
+    train_dataset = standardize_sharegpt(train_dataset)
+    eval_dataset = standardize_sharegpt(eval_dataset)
+    train_dataset = train_dataset.map(formatting_prompts_func, batched=True)
+    eval_dataset = eval_dataset.map(formatting_prompts_func, batched=True)
 
     # 打印数据集大小，便于调试
     print(f"训练集样本数: {len(train_dataset)}")
