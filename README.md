@@ -6,13 +6,27 @@
 
 ## 训练模型
 ### 环境配置
+
+#### 软件要求
 - Python 3.10
-- CUDA GPU
+- CUDA Toolkit 11.8 或更高（建议与PyTorch版本匹配）
+- PyTorch 2.0 及以上
+- Transformers 4.26 及以上
+- Datasets 2.10 及以上
+- Tokenizers 0.13 及以上
+- scikit-learn、matplotlib、tensorboard、jupyter、trl、peft、unsloth、psutil 等（详见 requirements.txt）
+
+#### 硬件要求
+- NVIDIA 显卡，建议显存24GB及以上（如RTX 3090/4090/A6000等，7B模型最低20GB显存可运行，推荐更高），最低至少需要显存4GB，8~12G也可，16G更好
+- 推荐SSD硬盘，剩余空间至少50GB
+- 推荐内存32GB及以上
 
 ## 使用方法
 
 ### 1. 准备运行环境
 - 安装python<br>
+   ~~自己去官网下，这不用我教吧~~
+- 安装CUDA工具包<br>
    ~~自己去官网下，这不用我教吧~~
 - 创建虚拟环境
    ```BASH
@@ -28,7 +42,6 @@
       pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
       pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
    ```
-
 ### 2. 准备数据集
 - 你需要在根目录下准备好数据集，格式**严格遵循**`ShareGPT Fomat`，并将其保存在项目根目录下，保存为`json`格式<br>
 - 以下是例子：<br>
