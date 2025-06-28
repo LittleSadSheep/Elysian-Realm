@@ -51,10 +51,6 @@ class MemoryMonitorCallback(TrainerCallback):
     def on_prediction_step(self, args, state, control, **kwargs):
         torch.cuda.empty_cache()
 
-def formatting_prompts_func(examples):
-   convos = examples["conversations"]
-   texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
-   return { "text" : texts, }
 
 def main():
     # 增强版检查点恢复逻辑
@@ -107,12 +103,17 @@ def main():
         device_map = "auto",  # 自动分配设备（CPU/GPU），优化GPU内存使用
         quantization_config = bnb_config,  # 应用前面定义的量化配置
     )
-    # 加载分词器，用于文本预处理，影响CPU内存使用（较小）
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template = "mistral", # change this to the right chat_template name
+        chat_template = "mistral",
     )
-    # 设置填充令牌为结束令牌，影响模型输入格式和训练稳定性
+
+    def formatting_prompts_func(examples):
+        convos = examples["conversations"]
+        texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
+        return { "text" : texts, }
+
+
     tokenizer.pad_token = tokenizer.eos_token
 
     # 定义 LoRA 配置，影响模型微调效率和参数更新
@@ -146,8 +147,9 @@ def main():
     # 分别标准化和格式化
     train_dataset = standardize_sharegpt(train_dataset)
     eval_dataset = standardize_sharegpt(eval_dataset)
-    train_dataset = train_dataset.map(formatting_prompts_func, batched=True)
-    eval_dataset = eval_dataset.map(formatting_prompts_func, batched=True)
+    # 强制单进程，避免Windows多进程序列化问题
+    train_dataset = train_dataset.map(formatting_prompts_func, batched=True, num_proc=1)
+    eval_dataset = eval_dataset.map(formatting_prompts_func, batched=True, num_proc=1)
 
     # 打印数据集大小，便于调试
     print(f"训练集样本数: {len(train_dataset)}")
