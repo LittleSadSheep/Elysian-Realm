@@ -10,17 +10,20 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "garbage_collection_threshold:0.9,max_sp
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 # 导入Unsloth的FastLanguageModel，用于高效加载和训练模型，影响模型加载速度和GPU内存使用
 from unsloth import FastLanguageModel
-# 导入数据集加载工具，用于加载训练数据，影响CPU内存使用（数据加载阶段）
-from datasets import load_dataset
 # 导入分词器、训练参数配置和量化配置工具，影响模型预处理和训练过程
 from transformers import AutoTokenizer, TrainingArguments, BitsAndBytesConfig
 # 导入SFTTrainer，用于监督微调，影响训练流程和模型性能
 from trl import SFTTrainer
 import torch  # 导入PyTorch，深度学习框架，影响GPU使用和计算效率
-from datasets import load_dataset  # 确保导入 load_dataset
+from datasets import load_dataset  # 保留这一行
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, DataCollatorForLanguageModeling, BitsAndBytesConfig
 from unsloth import FastLanguageModel
+# from unsloth import formatting_func  # 替换为此导入
 from trl import SFTTrainer
+from unsloth.chat_templates import CHAT_TEMPLATES
+from unsloth.chat_templates import get_chat_template
+from unsloth.chat_templates import standardize_sharegpt
+
 import torch
 # __init__
 interrupt_dir = None
@@ -47,6 +50,11 @@ class MemoryMonitorCallback(TrainerCallback):
         torch.cuda.empty_cache()
     def on_prediction_step(self, args, state, control, **kwargs):
         torch.cuda.empty_cache()
+
+def formatting_prompts_func(examples):
+   convos = examples["conversations"]
+   texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
+   return { "text" : texts, }
 
 def main():
     # 增强版检查点恢复逻辑
@@ -100,7 +108,10 @@ def main():
         quantization_config = bnb_config,  # 应用前面定义的量化配置
     )
     # 加载分词器，用于文本预处理，影响CPU内存使用（较小）
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = get_chat_template(
+        tokenizer,
+        chat_template = "mistral", # change this to the right chat_template name
+    )
     # 设置填充令牌为结束令牌，影响模型输入格式和训练稳定性
     tokenizer.pad_token = tokenizer.eos_token
 
@@ -121,12 +132,19 @@ def main():
         loftq_config=None,  # 禁用LoftQ量化，启用会进一步降低显存但可能影响精度
     )
 
-    # 加载数据集，影响CPU内存使用（数据量越大占用越多）和训练时间
-    dataset = load_dataset("text", data_files={"train": "training_data.txt"}, encoding="utf-8")["train"]
+    # 加载ShareGPT格式数据集
+    dataset = load_dataset(
+        path="e:/Codes/Python/Elysian-Realm",  # 指向包含data.json和dataset_info.json的目录
+        data_files="data.json"
+    )["train"]
+
     # 分割训练集和验证集（10%数据用于验证）
     dataset = dataset.train_test_split(test_size=0.1, seed=42)
     train_dataset = dataset["train"]
     eval_dataset = dataset["test"]
+
+    dataset = standardize_sharegpt(dataset)
+    dataset = dataset.map(formatting_prompts_func, batched = True,)
 
     # 打印数据集大小，便于调试
     print(f"训练集样本数: {len(train_dataset)}")
@@ -146,6 +164,7 @@ def main():
 
 
         num_train_epochs=20,  # 训练轮数，影响训练总时间和模型收敛程度（轮数越多可能过拟合）
+        # max_steps=10000,  # 新增：最多训练10000步（可根据需要调整）
         per_device_train_batch_size=12,  # 减小批次大小以降低显存峰值
         gradient_accumulation_steps=2,  # 增加梯度累积补偿批次减小
         learning_rate=2e-5,                # 降低学习率
@@ -242,8 +261,8 @@ def main():
 
     # 初始化并运行训练器
     trainer = SFTTrainer(
-        eval_dataset=eval_dataset.select(range(100)),  # 限制评估样本数量
-        max_eval_samples=100,  # 限制最大评估样本
+        eval_dataset=eval_dataset.select(range(min(100, len(eval_dataset)))),  # 自动适配数据量
+        max_eval_samples=min(100, len(eval_dataset)),  # 自动适配数据量
         model=model,
         args=training_args,
         train_dataset=train_dataset,
@@ -253,8 +272,8 @@ def main():
         save_steps=500,
         max_seq_length=384,
         tokenizer=tokenizer,
-        # 显式设置检查点目录
-        output_dir=os.path.abspath("./results").replace("\\", "/")
+        output_dir=os.path.abspath("./results").replace("\\", "/"),
+        formatting_func=formatting_func("sharegpt")  # 修正：传入函数而不是字符串
     )
     
     # 训练前清空缓存
