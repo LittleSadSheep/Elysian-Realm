@@ -278,7 +278,7 @@ def main():
         max_seq_length=384,
         tokenizer=tokenizer,
         output_dir=os.path.abspath("./results").replace("\\", "/"),
-        formatting_func=formatting_func("sharegpt")  # 修正：传入函数而不是字符串
+        formatting_func=formatting_prompts_func  # 修正：传入函数而不是字符串
     )
     
     # 训练前清空缓存
