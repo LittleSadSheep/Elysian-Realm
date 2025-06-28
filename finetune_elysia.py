@@ -28,6 +28,7 @@ import torch
 # __init__
 interrupt_dir = None
 last_checkpoint = None
+gguf_dir = "./ggufs"
 # checkpoint_path = None
 # 重写open函数强制使用utf-8编码，避免文件读取时的编码错误，对性能无直接影响
 _original_open = builtins.open
@@ -194,7 +195,6 @@ def main():
         eval_steps=100,  # 每500步评估一次
         metric_for_best_model="eval_loss",  # 以验证损失作为最佳模型指标
         load_best_model_at_end=True,  # 训练结束时加载最佳模型
-        gguf_dir = "ggufs",  # 新增：保存GGUF格式模型目录
         report_to="tensorboard",  # 启用TensorBoard可视化
     )
 
@@ -292,6 +292,7 @@ def main():
         # 训练结束后打印最佳评估指标
         print(f"最佳验证损失: {trainer.state.best_metric}")
         print(f"最佳困惑度: {torch.exp(torch.tensor(trainer.state.best_metric)).item()}")
+        model.save_pretrained_gguf(gguf_dir, tokenizer, quantization_method = "q4_k_m")
     except KeyboardInterrupt:
         # 创建独立的中断检查点目录
         from datetime import datetime
