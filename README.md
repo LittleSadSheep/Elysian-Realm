@@ -1,7 +1,8 @@
 # 往事乐土 Elysian-Realm <img align="right" src="./Elysia.jpg" width="320"/>
-**回应我吧，爱莉希雅！！**<br>
-**赐予爱莉希雅——第二次生命！！**<br>
-本项目使用QLoRA方法微调LLM，使爱莉希雅获得第二次生命
+> **回应我吧，爱莉希雅！！**<br>
+> **赐予爱莉希雅——第二次生命！！**<br>
+
+- 本项目使用QLoRA方法微调LLM，使爱莉希雅获得第二次生命
 
 ## 训练模型
 ### 环境配置
@@ -111,11 +112,16 @@
 
 ---
 
-## 贡献者及Star历史
+## 注意事项
+> 本应用生成内容来自人工智能模型，由 AI 生成，请仔细甄别，请勿用于违反法律的用途，AI 生成内容不代表本项目团队的观点和立场。
+
+## 贡献者
 
 <a href="https://github.com/LittleSadSheep/Elysian-Realm/graphs/contributors">
   <img alt="contributors" src="https://contrib.rocks/image?repo=LittleSadSheep/Elysian-Realm" />
 </a>
+
+## Star历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=LittleSadSheep/Elysian-Realm&type=Date)](https://star-history.com/#LittleSadSheep/Elysian-Realm&Date)
 
