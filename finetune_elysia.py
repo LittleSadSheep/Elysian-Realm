@@ -292,7 +292,7 @@ def main():
         # 训练结束后打印最佳评估指标
         print(f"最佳验证损失: {trainer.state.best_metric}")
         print(f"最佳困惑度: {torch.exp(torch.tensor(trainer.state.best_metric)).item()}")
-        model.save_pretrained_gguf(gguf_dir, tokenizer, quantization_method = "q4_k_m")
+        # model.save_pretrained_gguf(gguf_dir, tokenizer, quantization_method = "q4_k_m")
     except KeyboardInterrupt:
         # 创建独立的中断检查点目录
         from datetime import datetime
@@ -341,8 +341,12 @@ def main():
         sys.exit(0)
 
     # 训练完成后保存模型，影响磁盘空间使用
-    model.save_pretrained("./elysia_model")
-    
+    # model.save_pretrained("./elysia_model")
+    # 合并LoRA权重并保存完整模型
+    model = model.merge_and_unload()
+    model.save_pretrained("./elysia_model", safe_serialization=True)
+    tokenizer.save_pretrained("./elysia_model")
+
     # 训练前优化数据加载
     if hasattr(trainer, 'get_train_dataloader'):
         trainer.get_train_dataloader().prefetch_factor = 1
