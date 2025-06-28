@@ -25,3 +25,6 @@ if __name__ == "__main__":
         launch_gradio(port=7861)  # 指定新端口
     elif args.mode == "tune":
         tune_main()
+    else:
+        print(f"未知模式: {args.mode}，请使用 train, infer, web 或 tune")
+        parser.print_help()

@@ -53,8 +53,18 @@ def launch_gradio(port: int = 7861):
 
     def user_fn(user_message, history):
         response = infer(user_message, model, tokenizer, history)
-        history = history + [[user_message, response]]
-        return history, history
+        # 修正：gr.Chatbot(type='messages') 需要 [{'role':..., 'content':...}, ...] 格式
+        if history is None:
+            history = []
+        history = history + [{"role": "user", "content": user_message}, {"role": "assistant", "content": response}]
+        # 返回格式应为 List[List[dict]]，每轮对话为一组user/assistant消息
+        # 但gradio expects List[List[dict]]，每组为一轮对话
+        # 所以需要将history按对话轮分组
+        grouped = []
+        for i in range(0, len(history), 2):
+            if i+1 < len(history):
+                grouped.append([history[i], history[i+1]])
+        return grouped, history
 
     with gr.Blocks() as demo:
         gr.Markdown("# 爱莉希雅对话演示")
@@ -65,8 +75,7 @@ def launch_gradio(port: int = 7861):
         msg.submit(user_fn, [msg, state], [chatbot, state])
         clear.click(lambda: ([], []), None, [chatbot, state])
     try:
-        # 只用server_name="localhost"，避免0.0.0.0和localhost混用导致的API路由问题
-        demo.launch(server_port=port, server_name="localhost")
+        demo.launch(server_port=port)
     except Exception as e:
         print(f"Gradio启动失败: {e}\n请检查端口是否被占用，或本地防火墙/代理设置。")
 
