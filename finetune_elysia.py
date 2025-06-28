@@ -96,12 +96,12 @@ def main():
     )
     # 从预训练模型加载并应用量化配置，影响模型加载速度和初始GPU内存占用
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name,  # 指定模型名称/路径
-        max_seq_length = 2048,  # 最大序列长度，影响GPU内存使用（更长序列需更多显存）和模型上下文理解能力
-        dtype = torch.bfloat16,  # 模型数据类型，bfloat16比float32节省一半显存，对精度影响小
-        token = None,  # Hugging Face访问令牌，无令牌时为None，不影响性能
-        device_map = "auto",  # 自动分配设备（CPU/GPU），优化GPU内存使用
-        quantization_config = bnb_config,  # 应用前面定义的量化配置
+        model_name,
+        max_seq_length = 1024,  # 降低序列长度
+        dtype = torch.bfloat16,
+        token = None,
+        device_map = "auto",
+        quantization_config = bnb_config,
     )
     tokenizer = get_chat_template(
         tokenizer,
@@ -118,7 +118,7 @@ def main():
 
     # 定义 LoRA 配置，影响模型微调效率和参数更新
     model = FastLanguageModel.get_peft_model(
-        model,  # 基础模型
+        model,
         r=8,  # LoRA注意力维度，影响模型微调能力和参数数量（r越大能力越强但参数越多）
         # 指定LoRA应用的目标模块，影响模型微调效果和GPU内存使用
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
@@ -128,7 +128,7 @@ def main():
         bias="none",  # 是否训练偏置参数，"none"表示不训练，减少参数数量和显存使用
         use_gradient_checkpointing=True,  # 启用梯度检查点，节省GPU显存（约50%）但训练速度降低10-20%
         random_state=3407,  # 随机种子，保证训练可复现性，对性能无影响
-        max_seq_length=2048,  # 最大序列长度，需与前面保持一致
+        max_seq_length=1024,  # 最大序列长度，需与前面保持一致
         use_rslora=False,  # 禁用RS-LoRA，启用会改变LoRA更新方式，对性能影响因任务而异
         loftq_config=None,  # 禁用LoftQ量化，启用会进一步降低显存但可能影响精度
     )
@@ -170,8 +170,8 @@ def main():
 
         num_train_epochs=20,  # 训练轮数，影响训练总时间和模型收敛程度（轮数越多可能过拟合）
         # max_steps=10000,  # 新增：最多训练10000步（可根据需要调整）
-        per_device_train_batch_size=12,  # 减小批次大小以降低显存峰值
-        gradient_accumulation_steps=2,  # 增加梯度累积补偿批次减小
+        per_device_train_batch_size=2,  # 显著降低
+        gradient_accumulation_steps=1,  # 降低
         learning_rate=2e-5,                # 降低学习率
         optim="adamw_torch",  #  使用标准优化器减少内存碎片化，提升计算效率
         fp16 = not torch.cuda.is_bf16_supported(),
@@ -275,7 +275,7 @@ def main():
         callbacks=[tensorboard_callback, EarlyStoppingCallback],
         save_strategy="steps",
         save_steps=500,
-        max_seq_length=384,
+        max_seq_length=1024,  # 保持一致
         tokenizer=tokenizer,
         output_dir=os.path.abspath("./results").replace("\\", "/"),
         formatting_func=formatting_prompts_func  # 修正：传入函数而不是字符串
