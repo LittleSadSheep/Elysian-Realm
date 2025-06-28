@@ -16,6 +16,11 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    # 由于choices参数已经限制了输入，只有四种模式会被接受
+    # 如果没有指定--mode参数，args.mode为None，所有分支都不会进入，else会被执行
+    # 如果指定了无效的mode，argparse会自动报错并退出，else分支不会被执行
+    # 推荐写法如下：
+
     if args.mode == "train":
         train_main()
     elif args.mode == "infer":
@@ -25,5 +30,6 @@ if __name__ == "__main__":
     elif args.mode == "tune":
         tune_main()
     else:
+        # 只有在未指定--mode参数时才会进入此分支
         print("请指定有效的运行模式：train, infer, web, tune")
         parser.print_help()
