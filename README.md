@@ -12,7 +12,17 @@
 ## 使用方法
 
 ### 1. 准备运行环境
-- 安装python ~~去官网下，这不用我教吧~~
+- 安装python<br>
+   ~~自己去官网下，这不用我教吧~~
+- 创建虚拟环境
+   ```BASH
+      python -m venv venv
+      #激活虚拟环境
+      #在 Windows 上：
+      \venv\Scripts\activate
+      #在Linux上：
+      source myenv/bin/activate
+   ```
 - 安装依赖
    ```BASH
       pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
