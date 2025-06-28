@@ -13,7 +13,7 @@ SYSTEM_PROMPT = '''
 '''
 
 # 定义对话函数
-def chat_with_elysia(user_input, stop_string="</s>", system_prompt=SYSTEM_PROMPT):
+def chat_with_elysia(user_input, system_prompt=SYSTEM_PROMPT):
     # 构造ShareGPT格式对话
     conversation = [
         {"role": "system", "content": system_prompt.strip()},
@@ -25,20 +25,18 @@ def chat_with_elysia(user_input, stop_string="</s>", system_prompt=SYSTEM_PROMPT
     outputs = model.generate(
         **inputs,
         max_new_tokens=300,
-        eos_token_id=tokenizer.eos_token_id,
+        eos_token_id=tokenizer.eos_token_id,  # 碰到EOS Token自动停止
     )
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     # 去除开头的[/INST]及其前内容
     response = re.sub(r"^.*\[/INST\]", "", response, flags=re.DOTALL).strip()
-    # 截断stop_string
-    if stop_string in response:
-        response = response.split(stop_string)[0]
-    # 去掉prompt部分，只保留模型回复
-    if user_input in response:
-        response = response.split(user_input, 1)[-1].strip()
     return response
 
-# 测试对话
-user_input = input("请输入：")
-response = chat_with_elysia(user_input)
-print(f"爱莉希雅回复：{response}")
+if __name__ == "__main__":
+    try:
+        while True:
+            user_input = input("请输入：")
+            response = chat_with_elysia(user_input)
+            print(f"爱莉希雅回复：{response}")
+    except KeyboardInterrupt:
+        print("\n已退出对话。")
