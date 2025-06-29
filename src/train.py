@@ -49,7 +49,12 @@ def train_main():
     """
     主训练入口，完成模型加载、数据增强、训练、保存等流程。
     """
-    wandb.init(project="elysia-finetune", name="mistral-elysia")
+    # WandB初始化增加超时设置，避免网络慢导致卡死
+    wandb.init(
+        project="elysia-finetune",
+        name="mistral-elysia",
+        settings=wandb.Settings(init_timeout=20, _disable_stats=True)  # 20s超时，禁用统计防止阻塞
+    )
     model_name = "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"  # 可更换为其它模型
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,  # 是否启用4bit量化
