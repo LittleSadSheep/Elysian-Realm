@@ -70,7 +70,8 @@ def train_main(
     lora_dropout=0.12,
     num_train_epochs=7,
     trial=None,
-    use_checkpoint=True  # 新增参数，默认True
+    use_checkpoint=True,  # 新增参数，默认True
+    save_best=True        # 新增参数，默认True
 ):
     try:
         exp = get_experiment()
@@ -363,6 +364,20 @@ def train_main(
         model = model.merge_and_unload()
         model.save_pretrained("./elysia_model", safe_serialization=True)
         tokenizer.save_pretrained("./elysia_model")
+
+        # 自动保存最优模型到 output/best_model/
+        if save_best and hasattr(trainer, 'state') and hasattr(trainer.state, 'best_model_checkpoint') and trainer.state.best_model_checkpoint:
+            import shutil
+            best_ckpt = trainer.state.best_model_checkpoint
+            best_model_dir = os.path.abspath("output/best_model").replace("\\", "/")
+            os.makedirs(best_model_dir, exist_ok=True)
+            # 复制最佳checkpoint下所有文件到best_model
+            for fname in os.listdir(best_ckpt):
+                fsrc = os.path.join(best_ckpt, fname)
+                fdst = os.path.join(best_model_dir, fname)
+                if os.path.isfile(fsrc):
+                    shutil.copy2(fsrc, fdst)
+            print(f"\n✅ 已将最佳权重复制到 {best_model_dir}")
 
         # 训练前优化数据加载
         if hasattr(trainer, 'get_train_dataloader'):
