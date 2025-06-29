@@ -1,0 +1,216 @@
+:root {
+  --blur-bg: rgba(255,255,255,0.55);
+  --blur-dark: rgba(30,30,30,0.45);
+  --transition: 0.4s cubic-bezier(.4,0,.2,1);
+  --main-radius: 24px;
+  --main-padding: 40px;
+  --main-gap: 32px;
+  --main-shadow: 0 8px 32px 0 rgba(0,0,0,0.18);
+  --main-btn-size: 64px;
+  --main-btn-radius: 20px;
+  --main-btn-font: 1.25rem;
+  --tarui-bg: linear-gradient(135deg, #f3f3f3 0%, #f7faff 40%, #f6f3ff 70%, #f9f6f3 100%);
+  --tarui-fg: #222;
+}
+
+body, .app-root {
+  margin: 0;
+  font-family: 'San Francisco', 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+  background: var(--tarui-bg) !important;
+  color: var(--tarui-fg, #222);
+  transition: background var(--transition), color var(--transition);
+  min-height: 100vh;
+}
+
+.app-header.blur-bg {
+  backdrop-filter: blur(24px) saturate(1.2);
+  background: var(--blur-bg);
+  border-radius: 0 0 var(--main-radius) var(--main-radius);
+  box-shadow: var(--main-shadow);
+  transition: background var(--transition), backdrop-filter var(--transition);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--main-padding);
+  height: 96px;
+}
+
+.app-root.dark .app-header.blur-bg {
+  background: var(--blur-dark);
+}
+
+.main-tabs {
+  display: flex;
+  gap: var(--main-gap);
+  justify-content: center;
+  margin-top: 32px;
+  margin-bottom: 32px;
+}
+
+.fluid-btn {
+  width: var(--main-btn-size);
+  height: var(--main-btn-size);
+  border-radius: var(--main-btn-radius);
+  font-size: var(--main-btn-font);
+  font-weight: 600;
+  background: var(--blur-bg);
+  box-shadow: var(--main-shadow);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border: none;
+  color: inherit;
+  transition: background var(--transition), box-shadow var(--transition), color var(--transition), transform 0.18s;
+  cursor: pointer;
+  margin: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fluid-btn:active {
+  transform: scale(0.96);
+}
+.fluid-btn.selected, .fluid-btn:focus {
+  background: rgba(0,120,255,0.12);
+  color: #0078ff;
+  outline: none;
+}
+
+.app-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--main-padding);
+  border-radius: var(--main-radius);
+  background: var(--blur-bg);
+  box-shadow: var(--main-shadow);
+  backdrop-filter: blur(32px) saturate(1.2);
+  margin-top: 40px;
+  margin-bottom: 40px;
+  transition: background var(--transition), box-shadow var(--transition);
+}
+.app-root.dark .app-content {
+  background: var(--blur-dark);
+}
+
+.fade-in {
+  animation: fadeIn 0.7s cubic-bezier(.4,0,.2,1);
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(32px);}
+  to { opacity: 1; transform: none;}
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120,120,120,0.15);
+  border-radius: 4px;
+}
+
+.app-root.dark {
+  --tarui-bg: linear-gradient(135deg, #181a1b 0%, #23243a 40%, #1a233a 70%, #2a1b2e 100%);
+  --tarui-fg: #f3f3f3;
+  background: var(--tarui-bg) !important;
+  /* 五彩斑斓的黑：多色渐变+暗色柔和过渡 */
+}
+
+.app-root.dark body, .app-root.dark {
+  background: var(--tarui-bg) !important;
+  /* 兼容 body 背景 */
+}
+
+.app-root.dark .app-header.blur-bg,
+.app-root.dark .app-content,
+.app-root.dark .project-desc,
+.app-root.dark .flat-glass-btn {
+  /* 叠加彩色毛玻璃渐变 */
+  background: linear-gradient(120deg, rgba(30,30,30,0.55) 60%, rgba(60,40,80,0.32) 100%), var(--blur-dark);
+}
+
+/* 项目描述区 */
+.project-desc {
+  width: 260px;
+  margin: 0 auto 36px auto;
+  padding: 28px 28px 20px 28px;
+  border-radius: 28px;
+  background: var(--blur-bg);
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.10);
+  backdrop-filter: blur(18px) saturate(1.2);
+  font-size: 1.18rem;
+  font-weight: 500;
+  color: #222;
+  text-align: center;
+  letter-spacing: 0.02em;
+  transition: background var(--transition), color var(--transition);
+}
+.app-root.dark .project-desc {
+  background: var(--blur-dark);
+  color: #eee;
+}
+
+/* 平铺长方形圆角毛玻璃按钮 */
+.flat-glass-btn {
+  width: 200px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  border-radius: 32px;
+  background: linear-gradient(120deg, rgba(255,255,255,0.55) 60%, rgba(220,240,255,0.32) 100%), var(--blur-bg);
+  box-shadow: 0 2px 16px 0 rgba(0,0,0,0.10);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: none;
+  font-size: 1.18rem;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 24px;
+  transition: background var(--transition), box-shadow var(--transition), color var(--transition), transform 0.18s;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.flat-glass-btn.selected, .flat-glass-btn:focus {
+  background: rgba(0,120,255,0.13);
+  color: #0078ff;
+  outline: none;
+  box-shadow: 0 4px 24px 0 rgba(0,120,255,0.10);
+}
+.flat-glass-btn:active {
+  transform: scale(0.97);
+}
+.app-root.dark .flat-glass-btn {
+  background: linear-gradient(120deg, rgba(30,30,30,0.55) 60%, rgba(60,40,80,0.32) 100%), var(--blur-dark);
+  color: #eee;
+}
+.app-root.dark .flat-glass-btn.selected {
+  background: rgba(0,120,255,0.18);
+  color: #60aaff;
+}
+
+.flat-glass-btn .parallax-btn-icon {
+  font-size: 2.2rem;
+  margin-right: 12px;
+  margin-left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.flat-glass-btn .parallax-btn-label {
+  font-size: 1.25rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  /* 让文字与按钮左、右、上、下边距等距 */
+  padding: 0;
+  margin: 0;
+  width: calc(100% - 44px);
+  /* 44px = 图标宽度+间距 */
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
