@@ -15,7 +15,7 @@ from datasets import load_dataset
 from unsloth.chat_templates import get_chat_template, standardize_sharegpt
 from trl import SFTTrainer
 from src.utils import formatting_prompts_func, compute_metrics, MemoryMonitorCallback
-import wandb
+from opik import Experiment
 import nlpaug.augmenter.word as naw
 import torch
 
@@ -23,11 +23,10 @@ def train_main():
     """
     主训练入口，完成模型加载、数据增强、训练、保存等流程。
     """
-    # WandB初始化增加超时设置，避免网络慢导致卡死
-    wandb.init(
+    # 用OPIK初始化实验追踪，替换wandb
+    experiment = Experiment(
         project="elysia-finetune",
-        name="mistral-elysia",
-        settings=wandb.Settings(init_timeout=20, _disable_stats=True)  # 20s超时，禁用统计防止阻塞
+        run_name="mistral-elysia"
     )
     model_name = "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"  # 可更换为其它模型
     bnb_config = BitsAndBytesConfig(
@@ -131,6 +130,9 @@ def train_main():
     )
     torch.cuda.empty_cache()
     trainer.train()
+    # 记录最终模型保存
+    experiment.log_artifact("./elysia_model", artifact_type="model")
+    experiment.end()
     model.save_pretrained("./elysia_adapter")
     tokenizer.save_pretrained("./elysia_adapter")
     model = model.merge_and_unload()

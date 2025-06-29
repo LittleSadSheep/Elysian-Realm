@@ -67,7 +67,7 @@ graph TD
     - [ ] 命令行推理（main.py --mode infer）
     - [ ] 支持未来Gradio升级的消息格式
 - [ ] 训练与评估增强
-    - [ ] WandB训练可视化集成
+    - [ ] OPIK训练可视化集成
     - [ ] Optuna超参数自动搜索（main.py --mode tune）
     - [ ] 数据增强（nlpaug，同义词替换/插入等）
     - [ ] 详细评估指标（loss、perplexity、accuracy、recall、f1等）
@@ -244,10 +244,12 @@ graph TD
 
 - 运行 `python main.py --mode infer` 可在命令行与模型交互，适合快速测试和脚本集成。
 
-### 4. WandB训练可视化
+### 4. 实验追踪与可视化（OPIK）
 
-- 集成 [Weights & Biases](https://wandb.ai/)，训练过程自动上传loss、perplexity、学习率、梯度等指标。
+- 集成 [OPIK (Open-source Platform for Interactive Knowledge)](https://github.com/comet-ml/opik)，训练过程自动上传loss、perplexity、学习率、梯度等指标。
 - 支持在线和本地可视化，便于分析和对比实验。
+- 替换了原有的 WandB，避免因网络或代理问题导致训练卡死。
+- 你可以在训练过程中用 `opik.log_metrics`、`opik.log_params`、`opik.log_artifact` 等API记录参数、指标和模型。
 
 ### 5. Optuna超参数自动搜索
 
