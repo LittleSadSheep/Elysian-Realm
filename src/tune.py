@@ -28,9 +28,9 @@ from src.train import train_main
 #     study = optuna.create_study(direction="minimize")
 #     study.optimize(objective, n_trials=10)
 def tune_main():
-    """
-    Optuna自动调参入口
-    """
+    # """
+    # Optuna自动调参入口
+    # """
     global use_checkpoint
     use_checkpoint = False  # 自动调参时禁用检查点，确保每次训练都是全新开始
     # 定义超参数搜索空间和目标函数

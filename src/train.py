@@ -70,13 +70,11 @@ def train_main(
     lora_dropout=0.12,
     num_train_epochs=7,
     trial=None,
-    # use_checkpoint=True  # 新增参数，默认True
+    use_checkpoint=True  # 新增参数，默认True
 ):
     try:
         exp = get_experiment()
         from transformers.trainer_utils import get_last_checkpoint
-
-        # === 检查点逻辑仅在非自动调参(trial is None)时启用 ===
 
         # 只在非自动调参时处理检查点
         if use_checkpoint:
