@@ -9,6 +9,23 @@
 > - 文档未完善，有问题可以提交 Issue 或者 Discussion。
 > - 由于持续迭代，可能存在一些已知或未知的 bug。
 
+## 训练模型
+### 环境配置
+
+#### 软件要求
+- Python 3.10
+- CUDA Toolkit 11.8 或更高（建议与PyTorch版本匹配）
+- PyTorch 2.0 及以上
+- Transformers 4.26 及以上
+- Datasets 2.10 及以上
+- Tokenizers 0.13 及以上
+- scikit-learn、matplotlib、tensorboard、jupyter、trl、peft、unsloth、psutil 等（详见 requirements.txt）
+
+#### 硬件要求
+- NVIDIA 显卡，建议显存24GB及以上（如RTX 3090/4090/A6000等，7B模型最低20GB显存可运行，推荐更高），最低至少需要显存4GB，8~12G也可，16G更好
+- 推荐SSD硬盘，剩余空间至少50GB
+- 推荐内存32GB及以上
+
 ## TO DO List
 - [x] 基础功能
     - [x] 基于QLoRA方法微调大模型
@@ -44,23 +61,6 @@
 - [ ] 接入硬件
     - [ ] esp32？
     - [ ] ~~接入**宇树机器人**，给她穿上`kigurumi`(?)，成为你的*赛博女友*(???)~~  (不可能，绝对不可能)
-
-## 训练模型
-### 环境配置
-
-#### 软件要求
-- Python 3.10
-- CUDA Toolkit 11.8 或更高（建议与PyTorch版本匹配）
-- PyTorch 2.0 及以上
-- Transformers 4.26 及以上
-- Datasets 2.10 及以上
-- Tokenizers 0.13 及以上
-- scikit-learn、matplotlib、tensorboard、jupyter、trl、peft、unsloth、psutil 等（详见 requirements.txt）
-
-#### 硬件要求
-- NVIDIA 显卡，建议显存24GB及以上（如RTX 3090/4090/A6000等，7B模型最低20GB显存可运行，推荐更高），最低至少需要显存4GB，8~12G也可，16G更好
-- 推荐SSD硬盘，剩余空间至少50GB
-- 推荐内存32GB及以上
 
 ## 使用方法
 
