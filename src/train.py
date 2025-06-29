@@ -71,17 +71,16 @@ def train_main(
     trial=None
 ):
     try:
-        # 确保每次训练都复用同一个comet experiment
         exp = get_experiment()
-        # 增强版检查点恢复逻辑
         from transformers.trainer_utils import get_last_checkpoint
-        
-        
-        if os.path.exists("./results") and get_last_checkpoint("./results") is not None:
+
+        # === 检查点逻辑仅在非自动调参(trial is None)时启用 ===
+        use_checkpoint = trial is None
+
+        if use_checkpoint and os.path.exists("./results") and get_last_checkpoint("./results") is not None:
             try:
                 global last_checkpoint
                 last_checkpoint = get_last_checkpoint("./results").replace("\\", "/")
-
                 required_files = [
                     "training_args.bin",
                     "optimizer.pt",
@@ -92,17 +91,15 @@ def train_main(
                     "adapter_model.safetensors"
                 ]
                 if last_checkpoint:
-                    # 统一检查点路径格式
-                    # global checkpoint_path
-                    # checkpoint_path = last_checkpoint.replace("\\", "/")
                     missing = [f for f in required_files if not os.path.isfile(os.path.join(last_checkpoint, f))]
                     if missing:
                         print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 缺失文件: {', '.join(missing)}")
-                        
                     else:
                         print(f"\n✅ 找到有效检查点: {last_checkpoint}")
             except Exception as e:
                 print(f"\n⚠️ 检查点恢复异常: {str(e)}")
+        else:
+            last_checkpoint = None  # 自动调参时不使用任何检查点
 
         # 加载模型和分词器
         # 模型名称/路径，选择4bit量化版本以减少GPU内存占用，直接影响模型性能和GPU内存使用
@@ -263,7 +260,7 @@ def train_main(
         #     except Exception as e:
         #         print(f"\n检查点恢复失败: {str(e)}")
         
-        if last_checkpoint:
+        if use_checkpoint and last_checkpoint:
             try:
                 # 验证检查点完整性
                 missing = [f for f in required_files if not os.path.exists(os.path.join(last_checkpoint, f))]
@@ -271,10 +268,11 @@ def train_main(
                     print(f"成功加载检查点: {last_checkpoint}")
                 else:
                     print(f"缺失文件: {', '.join(missing)}")
-                    
             except Exception as e:
                 print(f"检查点验证异常: {str(e)}")
             print(f"\n找到有效检查点 {last_checkpoint}\n包含文件: {', '.join(os.listdir(last_checkpoint))}\n")
+        elif not use_checkpoint:
+            print("\n自动调参模式下不使用任何检查点，开始全新训练\n")
         else:
             print("\n未找到有效检查点，开始全新训练\n")
 
@@ -298,8 +296,8 @@ def train_main(
         # 训练前清空缓存
         torch.cuda.empty_cache()
         try:
-            if last_checkpoint:
-                trainer.train(resume_from_checkpoint=last_checkpoint)  # 显式传递
+            if use_checkpoint and last_checkpoint:
+                trainer.train(resume_from_checkpoint=last_checkpoint)
             else:
                 trainer.train()
             # 训练结束后打印最佳评估指标
@@ -375,7 +373,7 @@ def train_main(
     except (RuntimeError, ValueError) as e:
         print(f"Trial failed due to error: {e}")
         if trial is not None:
-            return float("inf")  # 返回极大值，表示该trial无效
+            return float("inf")
         else:
             raise
 
@@ -412,5 +410,7 @@ def tune_main():
 
 if __name__ == '__main__':
     import multiprocessing
+    multiprocessing.freeze_support()
+    main()  # 执行主函数
     multiprocessing.freeze_support()
     main()  # 执行主函数
