@@ -17,6 +17,7 @@ import sys
 import torch  # 导入PyTorch，深度学习框架，影响GPU使用和计算效率
 from datasets import load_dataset  # 保留这一行
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, DataCollatorForLanguageModeling, BitsAndBytesConfig
+
 """
 主训练入口，完成模型加载、数据增强、训练、保存等流程。
 支持超参数传入，便于optuna自动调优。
@@ -37,7 +38,6 @@ def get_experiment():
 interrupt_dir = None
 last_checkpoint = None
 gguf_dir = "./ggufs"
-use_checkpoint = True
 # checkpoint_path = None
 # 重写open函数强制使用utf-8编码，避免文件读取时的编码错误，对性能无直接影响
 _original_open = builtins.open
@@ -69,7 +69,8 @@ def train_main(
     lora_alpha=32,
     lora_dropout=0.12,
     num_train_epochs=7,
-    trial=None
+    trial=None,
+    # use_checkpoint=True  # 新增参数，默认True
 ):
     try:
         exp = get_experiment()
@@ -417,7 +418,5 @@ def tune_main():
 
 if __name__ == '__main__':
     import multiprocessing
-    multiprocessing.freeze_support()
-    main()  # 执行主函数
     multiprocessing.freeze_support()
     main()  # 执行主函数
