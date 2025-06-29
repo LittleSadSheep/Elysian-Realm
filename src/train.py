@@ -3,6 +3,7 @@
 # 功能: 微调大模型，集成数据增强、WandB日志、评估等
 
 # ========== Unsloth 必须在 transformers 之前导入 ==========
+import os
 import unsloth  # 必须最先导入
 from unsloth import FastLanguageModel
 
