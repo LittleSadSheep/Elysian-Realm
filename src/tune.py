@@ -48,7 +48,8 @@ def tune_main():
             lora_alpha=lora_alpha,
             lora_dropout=lora_dropout,
             num_train_epochs=num_train_epochs,
-            trial=trial
+            trial=trial,
+            use_checkpoint=False  # 关键：禁用checkpoint
         )
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=10)
