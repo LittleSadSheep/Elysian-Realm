@@ -37,6 +37,7 @@ def get_experiment():
 interrupt_dir = None
 last_checkpoint = None
 gguf_dir = "./ggufs"
+use_checkpoint = True
 # checkpoint_path = None
 # 重写open函数强制使用utf-8编码，避免文件读取时的编码错误，对性能无直接影响
 _original_open = builtins.open
@@ -75,7 +76,6 @@ def train_main(
         from transformers.trainer_utils import get_last_checkpoint
 
         # === 检查点逻辑仅在非自动调参(trial is None)时启用 ===
-        use_checkpoint = trial is None
 
         # 只在非自动调参时处理检查点
         if use_checkpoint:
@@ -391,6 +391,9 @@ def tune_main():
     """
     Optuna自动调参入口
     """
+    global use_checkpoint
+    use_checkpoint = False  # 自动调参时禁用检查点，确保每次训练都是全新开始
+    # 定义超参数搜索空间和目标函数
     def objective(trial):
         learning_rate = trial.suggest_loguniform("learning_rate", 1e-6, 5e-4)
         per_device_train_batch_size = trial.suggest_categorical("per_device_train_batch_size", [2, 4])  # 避免8
