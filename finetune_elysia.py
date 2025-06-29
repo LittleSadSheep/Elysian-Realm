@@ -1,43 +1,6 @@
-import os
-import sys
-
-# ========== 代理自动配置 ==========
-import toml
-def setup_proxy():
-    config_path = os.path.join(os.path.dirname(__file__), "config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-        proxy_url = config.get("proxy", {}).get("url", "")
-        if proxy_url:
-            os.environ["HTTP_PROXY"] = proxy_url
-            os.environ["HTTPS_PROXY"] = proxy_url
-            os.environ["http_proxy"] = proxy_url
-            os.environ["https_proxy"] = proxy_url
-            if proxy_url.startswith("socks5"):
-                try:
-                    import socket
-                    import socks
-                    socks.set_default_proxy(socks.SOCKS5, proxy_url.split("://")[1].split(":")[0], int(proxy_url.split(":")[-1]))
-                    socket.socket = socks.socksocket
-                except ImportError:
-                    print("如需使用socks5代理，请先安装pysocks: pip install pysocks")
-            print(f"已设置全局代理: {proxy_url}")
-
-setup_proxy()
-
 import io
 import os
 import builtins
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"  # 禁用oneDNN警告
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  # 增强显存管理
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "garbage_collection_threshold:0.9,max_split_size_mb:512"
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-# 导入Unsloth的FastLanguageModel，用于高效加载和训练模型，影响模型加载速度和GPU内存使用
-from unsloth import FastLanguageModel
-# 导入分词器、训练参数配置和量化配置工具，影响模型预处理和训练过程
-from transformers import AutoTokenizer, TrainingArguments, BitsAndBytesConfig
-# 导入SFTTrainer，用于监督微调，影响训练流程和模型性能
-from trl import SFTTrainer
 import torch  # 导入PyTorch，深度学习框架，影响GPU使用和计算效率
 from datasets import load_dataset  # 保留这一行
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, DataCollatorForLanguageModeling, BitsAndBytesConfig
@@ -48,7 +11,6 @@ from unsloth.chat_templates import CHAT_TEMPLATES
 from unsloth.chat_templates import get_chat_template
 from unsloth.chat_templates import standardize_sharegpt
 
-import torch
 # __init__
 interrupt_dir = None
 last_checkpoint = None

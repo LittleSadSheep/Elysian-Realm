@@ -3,37 +3,9 @@
 # 功能: 项目主入口，支持训练、推理、网页、调参
 
 import argparse
-import os
-import sys
-import toml
 from src.train import train_main
 from src.infer import launch_gradio, infer_main
 from src.tune import tune_main
-
-# ========== 代理自动配置 ==========
-def setup_proxy():
-    config_path = os.path.join(os.path.dirname(__file__), "config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-        proxy_url = config.get("proxy", {}).get("url", "")
-        if proxy_url:
-            # 设置常见环境变量
-            os.environ["HTTP_PROXY"] = proxy_url
-            os.environ["HTTPS_PROXY"] = proxy_url
-            os.environ["http_proxy"] = proxy_url
-            os.environ["https_proxy"] = proxy_url
-            # socks5 代理支持
-            if proxy_url.startswith("socks5"):
-                try:
-                    import socket
-                    import socks
-                    socks.set_default_proxy(socks.SOCKS5, proxy_url.split("://")[1].split(":")[0], int(proxy_url.split(":")[-1]))
-                    socket.socket = socks.socksocket
-                except ImportError:
-                    print("如需使用socks5代理，请先安装pysocks: pip install pysocks")
-            print(f"已设置全局代理: {proxy_url}")
-
-setup_proxy()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Elysian-Realm 微调/推理/调参主入口")

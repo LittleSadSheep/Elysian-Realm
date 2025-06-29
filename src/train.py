@@ -2,33 +2,6 @@
 # 文件: src/train.py
 # 功能: 微调大模型，集成数据增强、WandB日志、评估等
 
-# ========== 代理自动配置 ========= =
-import os
-import sys
-import toml
-
-def setup_proxy():
-    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-        proxy_url = config.get("proxy", {}).get("url", "")
-        if proxy_url:
-            os.environ["HTTP_PROXY"] = proxy_url
-            os.environ["HTTPS_PROXY"] = proxy_url
-            os.environ["http_proxy"] = proxy_url
-            os.environ["https_proxy"] = proxy_url
-            if proxy_url.startswith("socks5"):
-                try:
-                    import socket
-                    import socks
-                    socks.set_default_proxy(socks.SOCKS5, proxy_url.split("://")[1].split(":")[0], int(proxy_url.split(":")[-1]))
-                    socket.socket = socks.socksocket
-                except ImportError:
-                    print("如需使用socks5代理，请先安装pysocks: pip install pysocks")
-            print(f"已设置全局代理: {proxy_url}")
-
-setup_proxy()
-
 # ========== Unsloth 必须在 transformers 之前导入 ==========
 import unsloth  # 必须最先导入
 from unsloth import FastLanguageModel
