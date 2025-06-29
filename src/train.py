@@ -2,11 +2,11 @@
 # 文件: src/train.py
 # 功能: 微调大模型，集成数据增强、WandB日志、评估等
 
+# ========== 代理自动配置 ========= =
 import os
 import sys
-
-# ========== 代理自动配置 ========= =
 import toml
+
 def setup_proxy():
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.toml")
     if os.path.exists(config_path):
@@ -29,17 +29,21 @@ def setup_proxy():
 
 setup_proxy()
 
-import torch
-import wandb
-import nlpaug.augmenter.word as naw
-from datasets import load_dataset
+# ========== Unsloth 必须在 transformers 之前导入 ==========
+import unsloth  # 必须最先导入
+from unsloth import FastLanguageModel
+
+# 其余 import 保持原样，FastLanguageModel 只需保留一次
 from transformers import TrainingArguments, BitsAndBytesConfig, DataCollatorForLanguageModeling
 from transformers.integrations import TensorBoardCallback
 from transformers import EarlyStoppingCallback
-from unsloth import FastLanguageModel
+from datasets import load_dataset
 from unsloth.chat_templates import get_chat_template, standardize_sharegpt
 from trl import SFTTrainer
 from src.utils import formatting_prompts_func, compute_metrics, MemoryMonitorCallback
+import wandb
+import nlpaug.augmenter.word as naw
+import torch
 
 def train_main():
     """

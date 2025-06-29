@@ -26,6 +26,29 @@
 - 推荐SSD硬盘，剩余空间至少50GB
 - 推荐内存32GB及以上
 
+## 项目架构
+
+```mermaid
+graph TD
+    A[main.py<br>项目入口] --> B1[src/train.py<br>训练与微调]
+    A --> B2[src/infer.py<br>推理/Gradio/命令行]
+    A --> B3[src/tune.py<br>超参数搜索]
+    A --> B4[src/utils.py<br>工具函数]
+    B1 --> C1[finetune_elysia.py<br>一体化训练脚本]
+    B1 --> D1[data.json<br>ShareGPT格式数据]
+    B1 --> D2[elysia_adapter<br>LoRA权重]
+    B1 --> D3[elysia_model<br>合并后模型]
+    B1 --> D4[elysia_model_fp16<br>全精度模型]
+    B1 --> D5[merge_lora_to_fp16.py<br>权重合并脚本]
+    B2 --> E1[Gradio网页界面]
+    B2 --> E2[命令行对话]
+    B3 --> F1[Optuna自动调参]
+    A --> G1[config.toml<br>代理配置]
+    A --> H1[requirements.txt]
+    A --> I1[README.md]
+    A --> J1[.vscode/launch.json]
+```
+
 ## TO DO List
 - [x] 基础功能
     - [x] 基于QLoRA方法微调大模型
