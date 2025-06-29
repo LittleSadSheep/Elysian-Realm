@@ -13,6 +13,7 @@
 /data.json
 /_unsloth_temporary_saved_buffers
 /output.gguf
+config.toml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
