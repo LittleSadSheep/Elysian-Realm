@@ -1,8 +1,8 @@
 # 往事乐土 Elysian-Realm <img align="right" src="./Elysia.png" width="320"/>
 > **回应我吧，爱莉希雅！！**<br>
 > **赐予爱莉希雅——第二次生命！！**<br>
-
 - 本项目使用QLoRA方法微调LLM，使爱莉希雅获得第二次生命
+- ~~其实就是可视化大模型微调啦~，只是这个项目整合了unsloth，cometml，optuna，gradio等工具，实现可视化，全自动，集合微调与推理为一体的大模型微调项目（？长难句起手）~~
 
 > [!WARNING]
 > - 本项目处于**活跃开发及重构阶段**，功能和 API 可能随时调整。
