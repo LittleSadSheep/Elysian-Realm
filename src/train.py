@@ -15,7 +15,8 @@ from datasets import load_dataset
 from unsloth.chat_templates import get_chat_template, standardize_sharegpt
 from trl import SFTTrainer
 from src.utils import formatting_prompts_func, compute_metrics, MemoryMonitorCallback
-from opik import Experiment
+from comet_ml import Experiment  # 新增
+
 import nlpaug.augmenter.word as naw
 import torch
 
@@ -23,10 +24,11 @@ def train_main():
     """
     主训练入口，完成模型加载、数据增强、训练、保存等流程。
     """
-    # 用OPIK初始化实验追踪，替换wandb
+    # 用Comet.ml初始化实验追踪
     experiment = Experiment(
-        project="elysia-finetune",
-        run_name="mistral-elysia"
+        project_name="elysia-finetune",
+        workspace=None,  # 可指定你的comet workspace
+        auto_output_logging="simple"
     )
     model_name = "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"  # 可更换为其它模型
     bnb_config = BitsAndBytesConfig(
@@ -131,10 +133,11 @@ def train_main():
     torch.cuda.empty_cache()
     trainer.train()
     # 记录最终模型保存
-    experiment.log_artifact("./elysia_model", artifact_type="model")
+    experiment.log_model("elysia_model", "./elysia_model")
     experiment.end()
     model.save_pretrained("./elysia_adapter")
     tokenizer.save_pretrained("./elysia_adapter")
     model = model.merge_and_unload()
     model.save_pretrained("./elysia_model", safe_serialization=True)
+    tokenizer.save_pretrained("./elysia_model")
     tokenizer.save_pretrained("./elysia_model")
