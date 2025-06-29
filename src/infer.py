@@ -87,6 +87,6 @@ if __name__ == "__main__":
     if args.mode == "cli":
         infer_main()
     elif args.mode == "web":
-        launch_gradio(port=7870)
+        launch_gradio(port=args.port)
     elif args.mode == "web":
         launch_gradio(port=7870)

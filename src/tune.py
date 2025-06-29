@@ -3,7 +3,7 @@
 # 功能: 超参数自动搜索（Optuna）
 
 import optuna
-from src.train import train_main
+from src.train import train_main, tune_main
 
 
 
