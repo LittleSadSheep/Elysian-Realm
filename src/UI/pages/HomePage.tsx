@@ -4,20 +4,20 @@ import { Icon } from '@iconify/react';
 
 const useStyles = makeStyles({
   card: {
-    maxWidth: 600,
+    maxWidth: '600px',
     margin: '0 auto',
-    padding: 32,
+    padding: '32px',
     background: tokens.colorNeutralBackground2,
     boxShadow: tokens.shadow8,
-    borderRadius: 16,
-    marginTop: 48,
+    borderRadius: '16px',
+    marginTop: '48px',
     textAlign: 'center',
     animation: 'fadeIn 0.8s cubic-bezier(.4,0,.2,1)',
   },
   icon: {
-    fontSize: 48,
+    fontSize: '48px',
     color: tokens.colorBrandForeground1,
-    marginBottom: 16,
+    marginBottom: '16px',
     animation: 'bounceIn 0.8s',
   },
   '@keyframes fadeIn': {

@@ -4,26 +4,26 @@ import { Icon } from '@iconify/react';
 
 const useStyles = makeStyles({
   card: {
-    maxWidth: 700,
+    maxWidth: '700px',
     margin: '0 auto',
-    padding: 32,
+    padding: '32px',
     background: tokens.colorNeutralBackground2,
     boxShadow: tokens.shadow8,
-    borderRadius: 16,
-    marginTop: 32,
+    borderRadius: '16px',
+    marginTop: '32px',
     animation: 'fadeIn 0.8s cubic-bezier(.4,0,.2,1)',
   },
   section: {
-    marginBottom: 32,
+    marginBottom: '32px',
   },
   paramRow: {
     display: 'flex',
-    gap: 16,
-    marginBottom: 16,
+    gap: '16px',
+    marginBottom: '16px',
     alignItems: 'center',
   },
   label: {
-    minWidth: 120,
+    minWidth: '120px',
     fontWeight: 500,
   },
   '@keyframes fadeIn': {
@@ -72,23 +72,23 @@ const TrainPage: React.FC = () => {
         <div className={styles.section}>
           <div className={styles.paramRow}>
             <span className={styles.label}>学习率</span>
-            <Input type="number" value={params.learning_rate} step={1e-6} onChange={e => setParams(p => ({ ...p, learning_rate: +e.target.value }))} />
+            <Input type="number" value={String(params.learning_rate)} step={1e-6} onChange={e => setParams(p => ({ ...p, learning_rate: +e.target.value }))} />
             <span className={styles.label}>Batch Size</span>
-            <Input type="number" value={params.batch_size} min={1} max={16} onChange={e => setParams(p => ({ ...p, batch_size: +e.target.value }))} />
+            <Input type="number" value={String(params.batch_size)} min={1} max={16} onChange={e => setParams(p => ({ ...p, batch_size: +e.target.value }))} />
           </div>
           <div className={styles.paramRow}>
             <span className={styles.label}>训练轮数</span>
-            <Input type="number" value={params.num_train_epochs} min={1} max={20} onChange={e => setParams(p => ({ ...p, num_train_epochs: +e.target.value }))} />
+            <Input type="number" value={String(params.num_train_epochs)} min={1} max={20} onChange={e => setParams(p => ({ ...p, num_train_epochs: +e.target.value }))} />
             <span className={styles.label}>LoRA r</span>
-            <Input type="number" value={params.lora_r} min={1} max={64} onChange={e => setParams(p => ({ ...p, lora_r: +e.target.value }))} />
+            <Input type="number" value={String(params.lora_r)} min={1} max={64} onChange={e => setParams(p => ({ ...p, lora_r: +e.target.value }))} />
             <span className={styles.label}>LoRA alpha</span>
-            <Input type="number" value={params.lora_alpha} min={1} max={128} onChange={e => setParams(p => ({ ...p, lora_alpha: +e.target.value }))} />
+            <Input type="number" value={String(params.lora_alpha)} min={1} max={128} onChange={e => setParams(p => ({ ...p, lora_alpha: +e.target.value }))} />
           </div>
           <div className={styles.paramRow}>
             <span className={styles.label}>LoRA Dropout</span>
-            <Input type="number" value={params.lora_dropout} min={0} max={0.5} step={0.01} onChange={e => setParams(p => ({ ...p, lora_dropout: +e.target.value }))} />
+            <Input type="number" value={String(params.lora_dropout)} min={0} max={0.5} step={0.01} onChange={e => setParams(p => ({ ...p, lora_dropout: +e.target.value }))} />
             <span className={styles.label}>梯度累积步数</span>
-            <Input type="number" value={params.gradient_accumulation_steps} min={1} max={32} onChange={e => setParams(p => ({ ...p, gradient_accumulation_steps: +e.target.value }))} />
+            <Input type="number" value={String(params.gradient_accumulation_steps)} min={1} max={32} onChange={e => setParams(p => ({ ...p, gradient_accumulation_steps: +e.target.value }))} />
           </div>
           <div className={styles.paramRow}>
             <span className={styles.label}>FP16混合精度</span>
@@ -96,13 +96,13 @@ const TrainPage: React.FC = () => {
             <span className={styles.label}>梯度检查点</span>
             <Switch checked={params.gradient_checkpointing} onChange={(_, d) => setParams(p => ({ ...p, gradient_checkpointing: d.checked }))} />
             <span className={styles.label}>数据加载线程数</span>
-            <Input type="number" value={params.dataloader_num_workers} min={1} max={16} onChange={e => setParams(p => ({ ...p, dataloader_num_workers: +e.target.value }))} />
+            <Input type="number" value={String(params.dataloader_num_workers)} min={1} max={16} onChange={e => setParams(p => ({ ...p, dataloader_num_workers: +e.target.value }))} />
           </div>
           <div className={styles.paramRow}>
             <span className={styles.label}>随机种子</span>
-            <Input type="number" value={params.seed} min={0} max={99999} onChange={e => setParams(p => ({ ...p, seed: +e.target.value }))} />
+            <Input type="number" value={String(params.seed)} min={0} max={99999} onChange={e => setParams(p => ({ ...p, seed: +e.target.value }))} />
             <span className={styles.label}>EarlyStopping耐心</span>
-            <Input type="number" value={params.early_stopping_patience} min={1} max={20} onChange={e => setParams(p => ({ ...p, early_stopping_patience: +e.target.value }))} />
+            <Input type="number" value={String(params.early_stopping_patience)} min={1} max={20} onChange={e => setParams(p => ({ ...p, early_stopping_patience: +e.target.value }))} />
           </div>
         </div>
       )}
@@ -110,7 +110,7 @@ const TrainPage: React.FC = () => {
         <div className={styles.section}>
           <div className={styles.paramRow}>
             <span className={styles.label}>Optuna实验轮数</span>
-            <Input type="number" value={params.n_trials} min={1} max={100} onChange={e => setParams(p => ({ ...p, n_trials: +e.target.value }))} />
+            <Input type="number" value={String(params.n_trials)} min={1} max={100} onChange={e => setParams(p => ({ ...p, n_trials: +e.target.value }))} />
           </div>
         </div>
       )}

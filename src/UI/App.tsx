@@ -1,5 +1,5 @@
 import React from 'react';
-import { FluentProvider, webLightTheme, Button, TabList, Tab, TabPanel, makeStyles, tokens } from '@fluentui/react-components';
+import { FluentProvider, webLightTheme, Button, TabList, Tab, makeStyles, tokens } from '@fluentui/react-components';
 import { Icon } from '@iconify/react';
 import HomePage from './pages/HomePage';
 import TrainPage from './pages/TrainPage';
@@ -24,23 +24,23 @@ const useStyles = makeStyles({
     background: tokens.colorNeutralBackground2,
   },
   logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: '40px',
+    height: '40px',
+    borderRadius: '8px',
     boxShadow: tokens.shadow4,
   },
   title: {
-    fontSize: 24,
+    fontSize: '24px',
     fontWeight: 700,
-    letterSpacing: 1,
+    letterSpacing: '1px',
   },
   tabList: {
     margin: '0 32px',
-    marginTop: 16,
+    marginTop: '16px',
   },
   content: {
     flex: 1,
-    padding: 32,
+    padding: '32px',
     background: tokens.colorNeutralBackground1,
     overflow: 'auto',
   },
@@ -68,11 +68,11 @@ const App: React.FC = () => {
         <Tab value="model" icon={<Icon icon="fluent:database-24-regular" />}>模型管理</Tab>
       </TabList>
       <main className={styles.content}>
-        <TabPanel value="home" hidden={tab !== 'home'}><HomePage /></TabPanel>
-        <TabPanel value="train" hidden={tab !== 'train'}><TrainPage /></TabPanel>
-        <TabPanel value="infer" hidden={tab !== 'infer'}><InferPage /></TabPanel>
-        <TabPanel value="tune" hidden={tab !== 'tune'}><TunePage /></TabPanel>
-        <TabPanel value="model" hidden={tab !== 'model'}><ModelPage /></TabPanel>
+        {tab === 'home' && <HomePage />}
+        {tab === 'train' && <TrainPage />}
+        {tab === 'infer' && <InferPage />}
+        {tab === 'tune' && <TunePage />}
+        {tab === 'model' && <ModelPage />}
       </main>
     </FluentProvider>
   );
