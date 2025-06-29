@@ -77,29 +77,33 @@ def train_main(
         # === 检查点逻辑仅在非自动调参(trial is None)时启用 ===
         use_checkpoint = trial is None
 
-        if use_checkpoint and os.path.exists("./results") and get_last_checkpoint("./results") is not None:
-            try:
-                global last_checkpoint
-                last_checkpoint = get_last_checkpoint("./results").replace("\\", "/")
-                required_files = [
-                    "training_args.bin",
-                    "optimizer.pt",
-                    "scheduler.pt",
-                    "trainer_state.json",
-                    "rng_state.pth",
-                    "adapter_config.json",
-                    "adapter_model.safetensors"
-                ]
-                if last_checkpoint:
-                    missing = [f for f in required_files if not os.path.isfile(os.path.join(last_checkpoint, f))]
-                    if missing:
-                        print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 缺失文件: {', '.join(missing)}")
-                    else:
-                        print(f"\n✅ 找到有效检查点: {last_checkpoint}")
-            except Exception as e:
-                print(f"\n⚠️ 检查点恢复异常: {str(e)}")
+        # 只在非自动调参时处理检查点
+        if use_checkpoint:
+            if os.path.exists("./results") and get_last_checkpoint("./results") is not None:
+                try:
+                    global last_checkpoint
+                    last_checkpoint = get_last_checkpoint("./results").replace("\\", "/")
+                    required_files = [
+                        "training_args.bin",
+                        "optimizer.pt",
+                        "scheduler.pt",
+                        "trainer_state.json",
+                        "rng_state.pth",
+                        "adapter_config.json",
+                        "adapter_model.safetensors"
+                    ]
+                    if last_checkpoint:
+                        missing = [f for f in required_files if not os.path.isfile(os.path.join(last_checkpoint, f))]
+                        if missing:
+                            print(f"\n⚠️ 发现不完整检查点 {last_checkpoint}, 缺失文件: {', '.join(missing)}")
+                        else:
+                            print(f"\n✅ 找到有效检查点: {last_checkpoint}")
+                except Exception as e:
+                    print(f"\n⚠️ 检查点恢复异常: {str(e)}")
+            else:
+                last_checkpoint = None
         else:
-            last_checkpoint = None  # 自动调参时不使用任何检查点
+            last_checkpoint = None  # 自动调参时彻底禁用检查点
 
         # 加载模型和分词器
         # 模型名称/路径，选择4bit量化版本以减少GPU内存占用，直接影响模型性能和GPU内存使用
@@ -260,9 +264,9 @@ def train_main(
         #     except Exception as e:
         #         print(f"\n检查点恢复失败: {str(e)}")
         
+        # 只在非自动调参时打印和验证检查点
         if use_checkpoint and last_checkpoint:
             try:
-                # 验证检查点完整性
                 missing = [f for f in required_files if not os.path.exists(os.path.join(last_checkpoint, f))]
                 if not missing:
                     print(f"成功加载检查点: {last_checkpoint}")
