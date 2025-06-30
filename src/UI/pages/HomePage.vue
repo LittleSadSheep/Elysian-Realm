@@ -1,46 +1,48 @@
 <template>
-  <div class="fluent-home-root">
-    <div class="fluent-home-main">
-      <!-- 左侧内容 -->
-      <div class="fluent-home-card glass">
-        <div class="fluent-home-header">
-          <img class="fluent-home-logo" src="/Elysia.png" alt="logo" />
-          <div>
-            <h1 class="fluent-home-title">Elysian-Realm</h1>
-            <div class="fluent-home-subtitle">大模型微调平台</div>
-          </div>
-        </div>
-        <div class="fluent-home-desc">
+  <div :class="['elysian-layout', isDark ? 'dark' : 'light']">
+    <aside :class="['elysian-sidebar', { collapsed: !sidebarOpen }]">
+      <div class="sidebar-header">
+        <button class="sidebar-toggle glass" @click="toggleSidebar" :aria-label="sidebarOpen ? '收起菜单' : '展开菜单'">
+          <Icon :icon="sidebarOpen ? 'fluent:chevron-left-24-regular' : 'fluent:chevron-right-24-regular'" />
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <button
+          v-for="item in navs"
+          :key="item.key"
+          :class="['sidebar-btn glass', { active: current === item.key, 'icon-only': !sidebarOpen }]"
+          @click="go(item.key)"
+          :aria-label="item.label"
+        >
+          <Icon :icon="item.icon" class="sidebar-icon" />
+          <span v-if="sidebarOpen" class="sidebar-label">{{ item.label }}</span>
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="mode-toggle glass" @click="toggleDark" :aria-label="isDark ? '切换为亮色模式' : '切换为深色模式'">
+          <Icon :icon="isDark ? 'fluent:weather-sunny-24-regular' : 'fluent:weather-moon-24-regular'" />
+        </button>
+      </div>
+    </aside>
+    <main class="elysian-content glass">
+      <slot />
+      <!-- 这里可以根据路由或状态切换不同内容页 -->
+      <div v-if="current === 'home'" class="elysian-home-content">
+        <img src="/Elysia.png" alt="elysia" class="elysian-hero-img" />
+        <h1 class="elysian-title">Elysian-Realm</h1>
+        <div class="elysian-desc">
           现代化、可视化的 LLM 微调与推理平台<br>
-          支持 QLoRA、Optuna、ShareGPT 格式<br>
-          采用 Microsoft Fluent 2 设计体系
-        </div>
-        <div class="fluent-home-btns">
-          <button
-            v-for="item in navs"
-            :key="item.key"
-            class="fluent-btn"
-            @click="go(item.key)"
-            :title="item.label"
-            :aria-label="item.label"
-          >
-            <Icon :icon="item.icon" class="btn-icon" />
-            <span class="btn-label">{{ item.label }}</span>
-          </button>
+          支持 QLoRA、Optuna、ShareGPT 格式
         </div>
       </div>
-      <!-- 右侧角色图 -->
-      <div class="fluent-home-hero glass">
-        <img src="/Elysia.png" alt="elysia" class="fluent-home-hero-img" />
-      </div>
-    </div>
+      <!-- 其他内容页... -->
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
-import { useRouter } from 'vue-router'
-const router = useRouter()
 const navs = [
   { key: 'home', icon: 'fluent:home-24-regular', label: '首页' },
   { key: 'train', icon: 'fluent:play-circle-24-regular', label: '训练' },
@@ -48,191 +50,267 @@ const navs = [
   { key: 'tune', icon: 'fluent:wand-24-regular', label: '调参' },
   { key: 'model', icon: 'fluent:database-24-regular', label: '模型管理' }
 ]
-const go = (key: string) => {
-  if (key !== 'home') router.push({ name: key })
+const current = ref('home')
+const go = (key: string) => { current.value = key }
+const sidebarOpen = ref(true)
+const isMobile = ref(window.innerWidth <= 900)
+const toggleSidebar = () => { sidebarOpen.value = !sidebarOpen.value }
+const handleResize = () => { isMobile.value = window.innerWidth <= 900; if(isMobile.value) sidebarOpen.value = false }
+
+// 深色模式检测与切换
+const isDark = ref(window.matchMedia('(prefers-color-scheme: dark)').matches)
+const onColorSchemeChange = (e: MediaQueryListEvent) => { isDark.value = e.matches }
+const toggleDark = () => {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  document.documentElement.classList.toggle('light', !isDark.value)
 }
+onMounted(() => {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onColorSchemeChange)
+  document.documentElement.classList.toggle('dark', isDark.value)
+  document.documentElement.classList.toggle('light', !isDark.value)
+  window.addEventListener('resize', handleResize)
+})
+onUnmounted(() => {
+  window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', onColorSchemeChange)
+  window.removeEventListener('resize', handleResize)
+})
 </script>
 
 <style scoped>
-.fluent-home-root {
+.elysian-layout {
+  display: flex;
   min-height: 100vh;
-  /* 多彩白（亮色）背景 */
-  background: linear-gradient(135deg, #fffbe6 0%, #e3f6fd 30%, #f7e1ff 60%, #e6ffe6 100%),
-              repeating-linear-gradient(120deg, #fff, #f0f0f0 20px, #f7e1ff 40px, #e3f6fd 60px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.4s;
+  background: var(--bg-gradient);
+  transition: background 0.3s;
 }
-:root.dark .fluent-home-root {
-  /* 多彩黑（深色）背景 */
-  background: linear-gradient(135deg, #181c24 0%, #2a1a2e 30%, #1a2e2a 60%, #2e1a1a 100%),
-              repeating-linear-gradient(120deg, #232427, #2a1a2e 20px, #1a2e2a 40px, #2e1a1a 60px);
-}
-.fluent-home-main {
+.light { --bg-gradient: linear-gradient(135deg, #f6f8fc 0%, #e3f6fd 100%); }
+.dark  { --bg-gradient: linear-gradient(135deg, #23272e 0%, #1a1d23 100%); }
+
+.elysian-sidebar {
+  width: 220px;
+  min-width: 56px;
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-radius: 0 16px 16px 0;
+  box-shadow: 2px 0 16px 0 rgba(0,0,0,0.06);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 64px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0;
+  transition: width 0.2s, background 0.3s;
+  z-index: 10;
+  position: relative;
+}
+.elysian-sidebar.collapsed {
+  width: 56px;
+}
+.light { --sidebar-bg: rgba(255,255,255,0.72); }
+.dark  { --sidebar-bg: rgba(32,32,36,0.72); }
+
+.sidebar-header {
   width: 100%;
-  max-width: 1200px;
-  padding: 48px 0;
-}
-.fluent-home-card {
-  min-width: 420px;
-  max-width: 480px;
-  padding: 40px 36px 32px 36px;
-  border-radius: 32px;
-  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.14);
-  background: rgba(255,255,255,0.72);
-  -webkit-backdrop-filter: blur(32px) saturate(1.3);
-  backdrop-filter: blur(32px) saturate(1.3);
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  animation: fadeInUp 0.8s;
-  transition: background 0.4s, box-shadow 0.3s;
-  -webkit-user-select: none;
-  user-select: none;
-}
-:root.dark .fluent-home-card {
-  background: rgba(32,32,36,0.82);
-  -webkit-backdrop-filter: blur(32px) saturate(1.3);
-  backdrop-filter: blur(32px) saturate(1.3);
-  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.32);
-}
-.fluent-home-header {
   display: flex;
   align-items: center;
-  gap: 18px;
-}
-.fluent-home-logo {
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
-  box-shadow: 0 2px 16px 0 rgba(0,0,0,0.12);
-}
-.fluent-home-title {
-  font-size: 2.8rem;
-  font-weight: 800;
-  margin: 0;
-  color: var(--fluent-title, #222);
-  letter-spacing: 1px;
-}
-:root.dark .fluent-home-title {
-  color: #fff;
-}
-.fluent-home-subtitle {
-  font-size: 1.2rem;
-  color: #0078d4;
-  font-weight: 600;
-  margin-top: 2px;
-}
-.fluent-home-desc {
-  font-size: 1.08rem;
-  color: var(--fluent-desc, #444);
-  line-height: 1.7;
-  margin-bottom: 8px;
-}
-:root.dark .fluent-home-desc {
-  color: #e0e0e0;
-}
-.fluent-home-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  margin-top: 12px;
-}
-.fluent-btn {
-  display: flex;
-  align-items: center;
-  gap: 14px;
   justify-content: flex-start;
-  background: linear-gradient(120deg, var(--fluent-btn-bg1, #f7faff) 60%, var(--fluent-btn-bg2, #e3e9f7) 100%);
-  border: none;
-  border-radius: 18px;
-  box-shadow: 0 2px 16px 0 rgba(0,120,212,0.10);
-  font-size: 1.18rem;
-  font-weight: 600;
-  color: var(--fluent-btn, #0078d4);
-  padding: 20px 0 20px 18px;
+  padding: 12px 0 8px 8px;
+}
+.sidebar-toggle.glass {
+  font-size: 1.5rem;
+  color: var(--sidebar-btn-color, #444);
   cursor: pointer;
-  transition: background 0.22s, box-shadow 0.22s, color 0.22s, transform 0.18s;
-  min-width: 180px;
-  min-height: 54px;
   outline: none;
-  -webkit-user-select: none;
-  user-select: none;
-  user-select: none;
+  border: none;
+  background: var(--sidebar-btn-bg, rgba(255,255,255,0.38));
+  border-radius: 12px;
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: 0 4px 12px 0 rgba(0,120,212,0.22), 0 2px 8px 0 rgba(0,0,0,0.08);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  transition: background 0.18s, box-shadow 0.18s, color 0.18s, transform 0.18s;
 }
-:root.dark .fluent-btn {
-  background: linear-gradient(120deg, #232427 60%, #18191c 100%);
+.sidebar-toggle.glass:hover, .sidebar-toggle.glass:focus {
+  background: var(--sidebar-btn-active-bg, #e3f6fd);
+  color: var(--sidebar-btn-active-color, #0078d4);
+  box-shadow: 0 8px 32px 0 rgba(0,120,212,0.32), 0 2px 8px 0 rgba(0,0,0,0.12);
+  transform: translateY(-2px) scale(1.04);
+}
+.dark .sidebar-toggle.glass {
+  background: rgba(32,32,36,0.62);
   color: #aad6ff;
-  box-shadow: 0 2px 16px 0 rgba(0,120,212,0.18);
+  box-shadow: 0 4px 12px 0 rgba(0,180,255,0.32), 0 2px 8px 0 rgba(0,0,0,0.18);
 }
-.fluent-btn:hover {
-  background: linear-gradient(120deg, var(--fluent-btn-bg2, #e3e9f7) 60%, var(--fluent-btn-bg1, #f7faff) 100%);
-  color: var(--fluent-btn-hover, #005fa3);
-  box-shadow: 0 8px 32px 0 rgba(0,120,212,0.18);
-  transform: translateY(-2px) scale(1.03);
-}
-:root.dark .fluent-btn:hover {
-  background: linear-gradient(120deg, #18191c 60%, #232427 100%);
+.dark .sidebar-toggle.glass:hover, .dark .sidebar-toggle.glass:focus {
+  background: #23272e;
   color: #fff;
+  box-shadow: 0 8px 32px 0 rgba(0,180,255,0.42), 0 2px 8px 0 rgba(0,0,0,0.18);
 }
-.fluent-btn:active {
-  filter: brightness(0.97);
-  transform: scale(0.98);
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
 }
-.btn-icon {
-  font-size: 1.7rem;
+.sidebar-btn.glass {
   display: flex;
   align-items: center;
+  width: 90%;
+  margin-left: 5%;
+  background: var(--sidebar-btn-bg, rgba(255,255,255,0.38));
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px 0 rgba(0,120,212,0.22), 0 2px 8px 0 rgba(0,0,0,0.08);
+  font-size: 1.08rem;
+  color: var(--sidebar-btn-color, #444);
+  padding: 12px 12px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
+  outline: none;
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  position: relative;
 }
-.btn-label {
-  flex: 1;
-  text-align: left;
-}
-.fluent-home-hero {
-  min-width: 360px;
-  min-height: 420px;
-  border-radius: 36px;
-  background: rgba(255,255,255,0.32);
-  -webkit-backdrop-filter: blur(36px) saturate(1.2);
-  backdrop-filter: blur(36px) saturate(1.2);
-  box-shadow: 0 8px 48px 0 rgba(0,0,0,0.18);
-  display: flex;
-  align-items: center;
+.sidebar-btn.icon-only {
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  height: 40px;
+  padding: 0;
   justify-content: center;
-  animation: float 3s ease-in-out infinite alternate;
-  transition: background 0.4s, box-shadow 0.3s;
-  -webkit-user-select: none;
-  user-select: none;
+  margin-left: 8px;
 }
-:root.dark .fluent-home-hero {
-  background: rgba(32,32,36,0.32);
-  -webkit-backdrop-filter: blur(36px) saturate(1.2);
-  backdrop-filter: blur(36px) saturate(1.2);
-  box-shadow: 0 8px 48px 0 rgba(0,0,0,0.38);
+.sidebar-btn.icon-only .sidebar-label {
+  display: none;
 }
-.fluent-home-hero-img {
-  width: 320px;
-  height: 400px;
+.sidebar-btn.active, .sidebar-btn.glass:hover {
+  background: var(--sidebar-btn-active-bg, #e3f6fd);
+  color: var(--sidebar-btn-active-color, #0078d4);
+  box-shadow: 0 8px 32px 0 rgba(0,120,212,0.32), 0 2px 8px 0 rgba(0,0,0,0.12);
+  transform: translateY(-4px) scale(1.04);
+  z-index: 1;
+}
+.dark .sidebar-btn.glass {
+  background: rgba(32,32,36,0.62);
+  color: #bbb;
+  box-shadow: 0 4px 12px 0 rgba(0,180,255,0.32), 0 2px 8px 0 rgba(0,0,0,0.18);
+}
+.dark .sidebar-btn.active, .dark .sidebar-btn.glass:hover {
+  background: rgba(40,80,180,0.18);
+  color: #aad6ff;
+  box-shadow: 0 8px 32px 0 rgba(0,180,255,0.42), 0 2px 8px 0 rgba(0,0,0,0.18);
+}
+.sidebar-icon {
+  font-size: 1.4rem;
+  margin-right: 12px;
+}
+.sidebar-btn.icon-only .sidebar-icon {
+  margin-right: 0;
+}
+.sidebar-label {
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+.elysian-sidebar.collapsed .sidebar-label {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar-bottom {
+  position: absolute;
+  left: 0;
+  bottom: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.mode-toggle.glass {
+  background: var(--sidebar-btn-bg, rgba(255,255,255,0.38));
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px 0 rgba(0,120,212,0.22), 0 2px 8px 0 rgba(0,0,0,0.08);
+  font-size: 1.4rem;
+  color: var(--sidebar-btn-color, #444);
+  padding: 10px 12px;
+  cursor: pointer;
+  outline: none;
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.mode-toggle.glass:hover {
+  background: var(--sidebar-btn-active-bg, #e3f6fd);
+  color: var(--sidebar-btn-active-color, #0078d4);
+  box-shadow: 0 8px 32px 0 rgba(0,120,212,0.32), 0 2px 8px 0 rgba(0,0,0,0.12);
+}
+.dark .mode-toggle.glass {
+  background: rgba(32,32,36,0.62);
+  color: #aad6ff;
+  box-shadow: 0 4px 12px 0 rgba(0,180,255,0.32), 0 2px 8px 0 rgba(0,0,0,0.18);
+}
+.dark .mode-toggle.glass:hover {
+  background: #23272e;
+  color: #fff;
+  box-shadow: 0 8px 32px 0 rgba(0,180,255,0.42), 0 2px 8px 0 rgba(0,0,0,0.18);
+}
+
+.elysian-content.glass {
+  flex: 1;
+  min-width: 0;
+  padding: 48px 32px;
+  background: var(--content-bg);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
+  margin: 32px;
+  transition: background 0.3s;
+}
+.light { --content-bg: rgba(255,255,255,0.82); }
+.dark  { --content-bg: rgba(32,32,36,0.82); }
+
+.elysian-home-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+.elysian-hero-img {
+  width: 220px;
+  height: 280px;
   object-fit: contain;
-  border-radius: 32px;
-  box-shadow: 0 8px 48px 0 rgba(0,0,0,0.18);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.10);
 }
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(40px);}
-  to { opacity: 1; transform: none;}
+.elysian-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #0078d4;
+  margin: 0;
+  text-align: center;
 }
-@keyframes float {
-  0% { transform: translateY(0);}
-  100% { transform: translateY(-18px);}
+.dark .elysian-title { color: #aad6ff; }
+.elysian-desc {
+  font-size: 1.02rem;
+  color: #666;
+  line-height: 1.7;
+  text-align: center;
 }
+.dark .elysian-desc { color: #bbb; }
+
 @media (max-width: 900px) {
-  .fluent-home-main { flex-direction: column; gap: 32px; }
-  .fluent-home-hero { min-width: 280px; min-height: 320px; }
-  .fluent-home-hero-img { width: 220px; height: 260px; }
+  .elysian-layout { flex-direction: column; }
+  .elysian-sidebar { flex-direction: row; width: 100vw; min-width: 0; height: 56px; border-radius: 0 0 16px 16px; }
+  .elysian-sidebar.collapsed { width: 56px; }
+  .sidebar-header { padding: 8px 0 8px 8px; }
+  .sidebar-nav { flex-direction: row; gap: 12px; width: auto; }
+  .sidebar-btn.glass { flex-direction: column; padding: 6px 8px; border-radius: 12px; font-size: 0.98rem; margin-left: 0; width: 48px; }
+  .sidebar-btn.icon-only { width: 40px; min-width: 40px; max-width: 40px; height: 40px; padding: 0; }
+  .sidebar-icon { margin: 0 0 4px 0; }
+  .sidebar-bottom { position: absolute; left: auto; right: 12px; bottom: 8px; }
+  .elysian-content.glass { padding: 24px 8px; margin: 8px; border-radius: 12px; }
 }
 </style> 
