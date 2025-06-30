@@ -125,7 +125,7 @@ const formatTime = (s: number) => `${Math.floor(s/3600).toString().padStart(2,'0
 <style scoped>
 .fluent-tune-root {
   min-height: 100vh;
-  background: linear-gradient(135deg, #e3e9f7 0%, #f7faff 40%, #f6f3ff 70%, #f9f6f3 100%);
+  background: linear-gradient(135deg, #e3e9f700 0%, #f7faff00 40%, #f6f3ff00 70%rgba(249, 246, 243, 0)f3 100%);
   display: flex;
   align-items: center;
   justify-content: center;

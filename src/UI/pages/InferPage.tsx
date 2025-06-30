@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import { Card, makeStyles, tokens, Subtitle1, Text, Input, Button } from '@fluentui/react-components';
 import { Icon } from '@iconify/react';
 

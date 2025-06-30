@@ -25,7 +25,6 @@
       </div>
     </aside>
     <main class="elysian-content glass">
-      <slot />
       <!-- 这里可以根据路由或状态切换不同内容页 -->
       <div v-if="current === 'home'" class="elysian-home-content">
         <img src="/Elysia.png" alt="elysia" class="elysian-hero-img" />
@@ -35,6 +34,10 @@
           支持 QLoRA、Optuna、ShareGPT 格式
         </div>
       </div>
+      <TrainPage v-else-if="current === 'train'" />
+      <InferPage v-else-if="current === 'infer'" />
+      <TunePage v-else-if="current === 'tune'" />
+      <ModelPage v-else-if="current === 'model'" />
       <!-- 其他内容页... -->
     </main>
   </div>
@@ -43,6 +46,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
+import TrainPage from './TrainPage.vue'
+import InferPage from './InferPage.vue'
+import TunePage from './TunePage.vue'
+import ModelPage from './ModelPage.vue'
+
 const navs = [
   { key: 'home', icon: 'fluent:home-24-regular', label: '首页' },
   { key: 'train', icon: 'fluent:play-circle-24-regular', label: '训练' },
@@ -80,12 +88,13 @@ onUnmounted(() => {
 <style scoped>
 .elysian-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: var(--bg-gradient);
   transition: background 0.3s;
 }
-.light { --bg-gradient: linear-gradient(135deg, #f6f8fc 0%, #e3f6fd 100%); }
-.dark  { --bg-gradient: linear-gradient(135deg, #23272e 0%, #1a1d23 100%); }
+.light { --bg-gradient: linear-gradient(135deg, #829cd8 0%, #cc8bc9 100%); }
+.dark  { --bg-gradient: linear-gradient(135deg, rgb(28, 40, 71) 0%, #511166 100%); }
 
 .elysian-sidebar {
   width: 220px;
@@ -142,11 +151,11 @@ onUnmounted(() => {
   color: #aad6ff;
   box-shadow: 0 4px 12px 0 rgba(0,180,255,0.32), 0 2px 8px 0 rgba(0,0,0,0.18);
 }
-.dark .sidebar-toggle.glass:hover, .dark .sidebar-toggle.glass:focus {
+/* .dark .sidebar-toggle.glass:hover, .dark .sidebar-toggle.glass:focus {
   background: #23272e;
-  color: #fff;
+  color: #ffffff;
   box-shadow: 0 8px 32px 0 rgba(0,180,255,0.42), 0 2px 8px 0 rgba(0,0,0,0.18);
-}
+} */
 
 .sidebar-nav {
   display: flex;
@@ -162,12 +171,12 @@ onUnmounted(() => {
   background: var(--sidebar-btn-bg, rgba(255,255,255,0.38));
   border: none;
   border-radius: 12px;
-  box-shadow: 0 4px 12px 0 rgba(0,120,212,0.22), 0 2px 8px 0 rgba(0,0,0,0.08);
+  box-shadow: none;
   font-size: 1.08rem;
   color: var(--sidebar-btn-color, #444);
   padding: 12px 12px;
   cursor: pointer;
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s, border 0.18s, transform 0.18s;
   outline: none;
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
@@ -188,19 +197,27 @@ onUnmounted(() => {
 .sidebar-btn.active, .sidebar-btn.glass:hover {
   background: var(--sidebar-btn-active-bg, #e3f6fd);
   color: var(--sidebar-btn-active-color, #0078d4);
-  box-shadow: 0 8px 32px 0 rgba(0,120,212,0.32), 0 2px 8px 0 rgba(0,0,0,0.12);
+  border: 2px solid #3abfff;
+  box-shadow:
+    0 0 0 2px #3abfff,
+    0 8px 32px 0 rgba(0,120,212,0.32),
+    0 2px 8px 0 rgba(0,0,0,0.12);
   transform: translateY(-4px) scale(1.04);
   z-index: 1;
 }
 .dark .sidebar-btn.glass {
-  background: rgba(32,32,36,0.62);
-  color: #bbb;
-  box-shadow: 0 4px 12px 0 rgba(0,180,255,0.32), 0 2px 8px 0 rgba(0,0,0,0.18);
+  background: rgba(24,24,36,0.62);
+  color: #aad6ff;
+  box-shadow: none;
 }
 .dark .sidebar-btn.active, .dark .sidebar-btn.glass:hover {
   background: rgba(40,80,180,0.18);
   color: #aad6ff;
-  box-shadow: 0 8px 32px 0 rgba(0,180,255,0.42), 0 2px 8px 0 rgba(0,0,0,0.18);
+  border: 2px solid #3abfff;
+  box-shadow:
+    0 0 0 2px #3abfff,
+    0 8px 32px 0 rgba(58,191,255,0.42),
+    0 2px 8px 0 rgba(0,0,0,0.18);
 }
 .sidebar-icon {
   font-size: 1.4rem;
@@ -220,12 +237,11 @@ onUnmounted(() => {
 }
 
 .sidebar-bottom {
-  position: absolute;
-  left: 0;
-  bottom: 12px;
+  margin-top: auto;
   width: 100%;
+  padding: 12px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 .mode-toggle.glass {
   background: var(--sidebar-btn-bg, rgba(255,255,255,0.38));
@@ -268,6 +284,7 @@ onUnmounted(() => {
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
   margin: 32px;
   transition: background 0.3s;
+  overflow-y: auto;
 }
 .light { --content-bg: rgba(255,255,255,0.82); }
 .dark  { --content-bg: rgba(32,32,36,0.82); }

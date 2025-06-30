@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import { Card, makeStyles, tokens, Subtitle1, Text, Input, Button } from '@fluentui/react-components';
 import { Icon } from '@iconify/react';
 
@@ -18,7 +18,7 @@ const useStyles = makeStyles({
   },
   inputRow: {
     display: 'flex',
-    gap: 16,
+    gap: "16px",
     alignItems: 'center',
     marginBottom: '24px',
   },
