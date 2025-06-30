@@ -1,555 +1,192 @@
 <template>
-  <div class="model-page fade-in">
-    <div class="container">
-      <!-- 页面标题 -->
-      <div class="page-header">
-        <h1 class="page-title">模型管理</h1>
-        <p class="page-description">统一的模型存储和管理，支持多种格式转换和版本控制</p>
+  <div class="fluent-model-root">
+    <div class="fluent-model-main glass">
+      <div class="fluent-model-header">
+        <h1>模型管理</h1>
+        <div class="desc">管理本地与已训练模型，支持导入、导出、删除等操作</div>
       </div>
-
-      <!-- 模型列表 -->
-      <div class="model-list card">
-        <div class="list-header">
-          <h2 class="section-title">模型列表</h2>
-          <div class="list-controls">
-            <button class="button secondary" @click="refreshModels">
-              <Icon icon="fluent:refresh-24-regular" />
-              刷新
-            </button>
-            <button class="button primary" @click="importModel">
-              <Icon icon="fluent:add-24-regular" />
-              导入模型
-            </button>
-          </div>
-        </div>
-
-        <div class="models-grid grid grid-3">
-          <div 
-            v-for="model in models" 
-            :key="model.id"
-            class="model-item"
-            :class="{ active: selectedModel?.id === model.id }"
-            @click="selectModel(model)"
-          >
-            <div class="model-header">
-              <div class="model-icon">
-                <Icon :icon="model.icon" />
-              </div>
-              <div class="model-status" :class="model.status">
-                {{ model.status === 'loaded' ? '已加载' : '未加载' }}
-              </div>
-            </div>
-            
-            <div class="model-info">
-              <h3 class="model-name">{{ model.name }}</h3>
-              <p class="model-version">{{ model.version }}</p>
-              <p class="model-size">{{ formatSize(model.size) }}</p>
-              <p class="model-format">{{ model.format }}</p>
-            </div>
-            
-            <div class="model-actions">
-              <button class="action-btn" @click.stop="loadModel(model)" :disabled="model.status === 'loaded'">
-                <Icon icon="fluent:play-24-regular" />
-              </button>
-              <button class="action-btn" @click.stop="convertModel(model)">
-                <Icon icon="fluent:arrow-swap-24-regular" />
-              </button>
-              <button class="action-btn" @click.stop="deleteModel(model)">
-                <Icon icon="fluent:delete-24-regular" />
-              </button>
-            </div>
-          </div>
-        </div>
+      <div class="fluent-model-actions">
+        <button class="fluent-btn primary" @click="importModel"><Icon icon="fluent:folder-add-24-regular" /> 导入模型</button>
+        <button class="fluent-btn secondary" @click="exportSelected" :disabled="!selected.length"><Icon icon="fluent:arrow-export-24-regular" /> 导出</button>
+        <button class="fluent-btn secondary" @click="deleteSelected" :disabled="!selected.length"><Icon icon="fluent:delete-24-regular" /> 删除</button>
       </div>
-
-      <!-- 模型详情 -->
-      <div v-if="selectedModel" class="model-details card">
-        <h2 class="section-title">模型详情</h2>
-        <div class="details-grid grid grid-2">
-          <div class="detail-group">
-            <h3>基本信息</h3>
-            <div class="detail-item">
-              <span class="detail-label">名称</span>
-              <span class="detail-value">{{ selectedModel.name }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">版本</span>
-              <span class="detail-value">{{ selectedModel.version }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">大小</span>
-              <span class="detail-value">{{ formatSize(selectedModel.size) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">格式</span>
-              <span class="detail-value">{{ selectedModel.format }}</span>
-            </div>
-          </div>
-          
-          <div class="detail-group">
-            <h3>训练信息</h3>
-            <div class="detail-item">
-              <span class="detail-label">基础模型</span>
-              <span class="detail-value">{{ selectedModel.baseModel }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">微调方法</span>
-              <span class="detail-value">{{ selectedModel.finetuneMethod }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">训练轮数</span>
-              <span class="detail-value">{{ selectedModel.epochs }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">创建时间</span>
-              <span class="detail-value">{{ formatDate(selectedModel.createdAt) }}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="detail-actions">
-          <button class="button secondary" @click="exportModel">导出模型</button>
-          <button class="button secondary" @click="shareModel">分享模型</button>
-          <button class="button primary" @click="useModel">使用模型</button>
-        </div>
-      </div>
-
-      <!-- 转换对话框 -->
-      <div v-if="showConvertDialog" class="convert-dialog">
-        <div class="dialog-content card">
-          <h3>模型格式转换</h3>
-          <div class="convert-form">
-            <div class="form-group">
-              <label class="form-label">目标格式</label>
-              <select class="select" v-model="convertConfig.targetFormat">
-                <option value="gguf">GGUF</option>
-                <option value="safetensors">SafeTensors</option>
-                <option value="pytorch">PyTorch</option>
-                <option value="onnx">ONNX</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">量化级别</label>
-              <select class="select" v-model="convertConfig.quantization">
-                <option value="none">无量化</option>
-                <option value="q4_0">Q4_0</option>
-                <option value="q4_1">Q4_1</option>
-                <option value="q5_0">Q5_0</option>
-                <option value="q5_1">Q5_1</option>
-                <option value="q8_0">Q8_0</option>
-              </select>
-            </div>
-            
-            <div class="dialog-actions">
-              <button class="button secondary" @click="cancelConvert">取消</button>
-              <button class="button primary" @click="startConvert">开始转换</button>
-            </div>
-          </div>
-        </div>
+      <div class="fluent-model-table glass">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" @change="toggleAll" :checked="allSelected" /></th>
+              <th>模型名称</th>
+              <th>大小</th>
+              <th>类型</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="model in models" :key="model.id">
+              <td><input type="checkbox" v-model="selected" :value="model.id" /></td>
+              <td>{{ model.name }}</td>
+              <td>{{ model.size }}</td>
+              <td>{{ model.type }}</td>
+              <td>
+                <span :class="['status-dot', model.status]">●</span>
+                {{ model.status === 'ready' ? '可用' : '未加载' }}
+              </td>
+              <td>
+                <button class="fluent-btn secondary mini" @click="exportModel(model)"><Icon icon="fluent:arrow-export-24-regular" /></button>
+                <button class="fluent-btn secondary mini" @click="deleteModel(model)"><Icon icon="fluent:delete-24-regular" /></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 
-// 模型列表
 const models = ref([
-  {
-    id: 1,
-    name: 'Llama2-7B-Chat',
-    version: 'v1.0',
-    size: 13743895347, // 13.7GB
-    format: 'GGUF',
-    status: 'loaded',
-    icon: 'fluent:brain-circuit-24-regular',
-    baseModel: 'Llama2-7B',
-    finetuneMethod: 'QLoRA',
-    epochs: 3,
-    createdAt: new Date('2024-01-15')
-  },
-  {
-    id: 2,
-    name: 'Qwen-7B-Chat',
-    version: 'v2.1',
-    size: 14566133760, // 14.5GB
-    format: 'SafeTensors',
-    status: 'unloaded',
-    icon: 'fluent:brain-circuit-24-regular',
-    baseModel: 'Qwen-7B',
-    finetuneMethod: 'LoRA',
-    epochs: 5,
-    createdAt: new Date('2024-01-20')
-  },
-  {
-    id: 3,
-    name: 'ChatGLM3-6B',
-    version: 'v1.2',
-    size: 12079595520, // 12GB
-    format: 'PyTorch',
-    status: 'unloaded',
-    icon: 'fluent:brain-circuit-24-regular',
-    baseModel: 'ChatGLM3-6B',
-    finetuneMethod: '全参数',
-    epochs: 2,
-    createdAt: new Date('2024-01-25')
-  }
+  { id: 1, name: 'Llama2-7B', size: '7B', type: '基础', status: 'ready' },
+  { id: 2, name: 'Qwen-7B', size: '7B', type: '微调', status: 'ready' },
+  { id: 3, name: 'ChatGLM3-6B', size: '6B', type: '基础', status: 'unloaded' }
 ])
 
-// 选中的模型
-const selectedModel = ref(models.value[0])
-
-// 转换对话框
-const showConvertDialog = ref(false)
-const convertConfig = ref({
-  targetFormat: 'gguf',
-  quantization: 'q4_0'
-})
-
-// 选择模型
-const selectModel = (model: any) => {
-  selectedModel.value = model
+const selected = ref<number[]>([])
+const allSelected = computed(() => selected.value.length === models.value.length)
+const toggleAll = (e: Event) => {
+  const checked = (e.target as HTMLInputElement).checked
+  selected.value = checked ? models.value.map(m => m.id) : []
 }
 
-// 加载模型
-const loadModel = (model: any) => {
-  model.status = 'loaded'
-  console.log('加载模型:', model.name)
-}
-
-// 转换模型
-const convertModel = (model: any) => {
-  selectedModel.value = model
-  showConvertDialog.value = true
-}
-
-// 删除模型
-const deleteModel = (model: any) => {
-  if (confirm(`确定要删除模型 "${model.name}" 吗？`)) {
-    const index = models.value.findIndex(m => m.id === model.id)
-    if (index > -1) {
-      models.value.splice(index, 1)
-      if (selectedModel.value?.id === model.id) {
-        selectedModel.value = models.value[0] || null
-      }
-    }
-  }
-}
-
-// 刷新模型列表
-const refreshModels = () => {
-  console.log('刷新模型列表')
-  // TODO: 实现刷新逻辑
-}
-
-// 导入模型
-const importModel = () => {
-  console.log('导入模型')
-  // TODO: 实现导入逻辑
-}
-
-// 导出模型
-const exportModel = () => {
-  console.log('导出模型:', selectedModel.value?.name)
-  // TODO: 实现导出逻辑
-}
-
-// 分享模型
-const shareModel = () => {
-  console.log('分享模型:', selectedModel.value?.name)
-  // TODO: 实现分享逻辑
-}
-
-// 使用模型
-const useModel = () => {
-  console.log('使用模型:', selectedModel.value?.name)
-  // TODO: 实现使用逻辑
-}
-
-// 取消转换
-const cancelConvert = () => {
-  showConvertDialog.value = false
-}
-
-// 开始转换
-const startConvert = () => {
-  console.log('开始转换:', convertConfig.value)
-  showConvertDialog.value = false
-  // TODO: 实现转换逻辑
-}
-
-// 格式化文件大小
-const formatSize = (bytes: number) => {
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  if (bytes === 0) return '0 B'
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
-}
-
-// 格式化日期
-const formatDate = (date: Date) => {
-  return date.toLocaleDateString('zh-CN')
-}
+const importModel = () => {}
+const exportSelected = () => {}
+const deleteSelected = () => {}
+const exportModel = (model: any) => {}
+const deleteModel = (model: any) => {}
 </script>
 
 <style scoped>
-.model-page {
-  padding: var(--spacing-xl) 0;
-}
-
-.page-header {
-  text-align: center;
-  margin-bottom: var(--spacing-2xl);
-}
-
-.page-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-sm);
-}
-
-.page-description {
-  font-size: 16px;
-  color: var(--color-text-secondary);
-}
-
-.model-list {
-  margin-bottom: var(--spacing-xl);
-}
-
-.list-header {
+.fluent-model-root {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e3e9f7 0%, #f7faff 40%, #f6f3ff 70%, #f9f6f3 100%);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
+  justify-content: center;
 }
-
-.section-title {
-  font-size: 20px;
+.fluent-model-main {
+  width: 100%;
+  max-width: 900px;
+  margin: 48px auto;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(24px) saturate(1.2);
+  padding: 40px 36px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: fadeInUp 0.8s;
+}
+.fluent-model-header h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #222;
+  margin-bottom: 8px;
+}
+.fluent-model-header .desc {
+  color: #0078d4;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
 }
-
-.list-controls {
+.fluent-model-actions {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 18px;
+  margin-bottom: 8px;
 }
-
-.models-grid {
-  margin-bottom: var(--spacing-lg);
-}
-
-.model-item {
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.model-item:hover {
-  border-color: var(--color-primary);
-  background: var(--color-bg-secondary);
-}
-
-.model-item.active {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: white;
-}
-
-.model-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
-}
-
-.model-icon {
-  font-size: 24px;
-  color: var(--color-primary);
-}
-
-.model-item.active .model-icon {
-  color: white;
-}
-
-.model-status {
-  font-size: 12px;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-tertiary);
-}
-
-.model-status.loaded {
-  background: #107c10;
-  color: white;
-}
-
-.model-status.unloaded {
-  background: var(--color-text-secondary);
-  color: white;
-}
-
-.model-info {
-  margin-bottom: var(--spacing-md);
-}
-
-.model-name {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: var(--spacing-xs);
-}
-
-.model-version,
-.model-size,
-.model-format {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.model-item.active .model-version,
-.model-item.active .model-size,
-.model-item.active .model-format {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.model-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.action-btn {
-  width: 32px;
-  height: 32px;
+.fluent-btn {
   border: none;
-  background: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-  border-radius: var(--radius-sm);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px 0 rgba(0,120,212,0.08);
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 12px 32px;
   cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
+  gap: 8px;
 }
-
-.action-btn:hover {
-  background: var(--color-primary);
-  color: white;
+.fluent-btn.primary {
+  background: linear-gradient(120deg, #0078d4 60%, #60aaff 100%);
+  color: #fff;
 }
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.fluent-btn.primary:hover {
+  background: linear-gradient(120deg, #005fa3 60%, #60aaff 100%);
 }
-
-.model-details {
-  margin-bottom: var(--spacing-xl);
+.fluent-btn.secondary {
+  background: #f7faff;
+  color: #0078d4;
 }
-
-.details-grid {
-  margin-bottom: var(--spacing-lg);
+.fluent-btn.secondary:hover {
+  background: #e3e9f7;
+  color: #005fa3;
 }
-
-.detail-group h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-md);
+.fluent-btn.mini {
+  padding: 6px 10px;
+  font-size: 1rem;
+  border-radius: 10px;
 }
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  padding: var(--spacing-sm) 0;
-  border-bottom: 1px solid var(--color-border);
+.fluent-model-table {
+  border-radius: 20px;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 4px 24px 0 rgba(0,120,212,0.10);
+  padding: 18px 18px;
+  overflow-x: auto;
 }
-
-.detail-label {
-  font-size: 14px;
-  color: var(--color-text-secondary);
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1.05rem;
+  background: transparent;
 }
-
-.detail-value {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
+th, td {
+  padding: 12px 10px;
+  text-align: left;
 }
-
-.detail-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  justify-content: center;
+th {
+  color: #0078d4;
+  font-weight: 700;
+  background: transparent;
 }
-
-.convert-dialog {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+tbody tr {
+  border-radius: 12px;
+  background: #f7faff;
+  box-shadow: 0 2px 8px 0 rgba(0,120,212,0.06);
+  transition: box-shadow 0.2s;
 }
-
-.dialog-content {
-  max-width: 400px;
-  width: 90%;
+tbody tr:hover {
+  box-shadow: 0 8px 32px 0 rgba(0,120,212,0.12);
 }
-
-.dialog-content h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-lg);
+.status-dot {
+  font-size: 1.2em;
+  margin-right: 6px;
 }
-
-.convert-form {
-  margin-bottom: var(--spacing-lg);
+.status-dot.ready {
+  color: #0078d4;
 }
-
-.dialog-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  justify-content: flex-end;
+.status-dot.unloaded {
+  color: #aaa;
 }
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .models-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .details-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .list-header {
-    flex-direction: column;
-    gap: var(--spacing-md);
-    align-items: flex-start;
-  }
-  
-  .list-controls {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .detail-actions {
-    flex-direction: column;
-  }
-  
-  .model-actions {
-    justify-content: center;
-  }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px);}
+  to { opacity: 1; transform: none;}
+}
+@media (max-width: 900px) {
+  .fluent-model-main { padding: 24px 8px; }
+  th, td { padding: 8px 4px; }
 }
 </style> 

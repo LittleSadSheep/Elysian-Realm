@@ -1,143 +1,36 @@
 <template>
-  <div class="infer-page fade-in">
-    <div class="container">
-      <!-- 页面标题 -->
-      <div class="page-header">
-        <h1 class="page-title">模型推理</h1>
-        <p class="page-description">加载模型，开始对话推理</p>
+  <div class="fluent-infer-root">
+    <div class="fluent-infer-main glass">
+      <div class="fluent-infer-header">
+        <h1>模型推理</h1>
+        <div class="desc">加载模型，开始对话推理</div>
       </div>
-
-      <!-- 模型选择 -->
-      <div class="model-selection card">
-        <h2 class="section-title">模型选择</h2>
-        <div class="model-grid grid grid-3">
-          <div 
-            v-for="model in availableModels" 
-            :key="model.id"
-            class="model-card"
-            :class="{ active: selectedModel?.id === model.id }"
-            @click="selectModel(model)"
-          >
-            <div class="model-icon">
-              <Icon :icon="model.icon" />
-            </div>
-            <div class="model-info">
-              <h3 class="model-name">{{ model.name }}</h3>
-              <p class="model-size">{{ model.size }}</p>
-            </div>
-            <div class="model-status" :class="model.status">
-              {{ model.status === 'loaded' ? '已加载' : '未加载' }}
-            </div>
+      <div class="fluent-infer-chat glass">
+        <div class="chat-messages">
+          <div v-for="msg in chatMessages" :key="msg.id" :class="['chat-bubble', msg.role]">
+            <span class="avatar"><Icon :icon="msg.role==='user'?'fluent:person-24-regular':'fluent:bot-24-regular'" /></span>
+            <span class="bubble-content">{{ msg.content }}</span>
           </div>
+        </div>
+        <div class="chat-input-row">
+          <textarea v-model="userInput" class="fluent-input" placeholder="输入您的问题..." @keydown.enter.prevent="sendMessage"></textarea>
+          <button class="fluent-btn primary send-btn" @click="sendMessage" :disabled="!userInput.trim()"><Icon icon="fluent:send-24-regular" /></button>
         </div>
       </div>
-
-      <!-- 对话界面 -->
-      <div class="chat-interface card">
-        <div class="chat-header">
-          <h2 class="section-title">对话</h2>
-          <div class="chat-controls">
-            <button class="button secondary" @click="clearChat">
-              <Icon icon="fluent:delete-24-regular" />
-              清空对话
-            </button>
-            <button class="button secondary" @click="exportChat">
-              <Icon icon="fluent:download-24-regular" />
-              导出对话
-            </button>
-          </div>
-        </div>
-
-        <div class="chat-messages" ref="chatContainer">
-          <div 
-            v-for="message in chatMessages" 
-            :key="message.id"
-            class="message"
-            :class="message.role"
-          >
-            <div class="message-avatar">
-              <Icon :icon="message.role === 'user' ? 'fluent:person-24-regular' : 'fluent:bot-24-regular'" />
-            </div>
-            <div class="message-content">
-              <div class="message-text">{{ message.content }}</div>
-              <div class="message-time">{{ formatTime(message.timestamp) }}</div>
-            </div>
-          </div>
-          
-          <div v-if="isGenerating" class="message assistant">
-            <div class="message-avatar">
-              <Icon icon="fluent:bot-24-regular" />
-            </div>
-            <div class="message-content">
-              <div class="message-text">
-                <span class="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chat-input">
-          <div class="input-group">
-            <textarea 
-              class="textarea"
-              v-model="userInput"
-              placeholder="输入您的问题..."
-              @keydown.enter.prevent="sendMessage"
-              :disabled="!selectedModel || isGenerating"
-            ></textarea>
-            <button 
-              class="button primary send-button"
-              @click="sendMessage"
-              :disabled="!userInput.trim() || !selectedModel || isGenerating"
-            >
-              <Icon icon="fluent:send-24-regular" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 参数设置 -->
-      <div class="inference-settings card">
-        <h2 class="section-title">推理参数</h2>
-        <div class="settings-grid grid grid-3">
+      <div class="fluent-infer-settings glass">
+        <div class="settings-row">
           <div class="form-group">
-            <label class="form-label">温度 (Temperature)</label>
-            <input 
-              type="range" 
-              class="range-input" 
-              v-model="settings.temperature" 
-              min="0" 
-              max="2" 
-              step="0.1"
-            />
+            <label>温度</label>
+            <input type="range" v-model="settings.temperature" min="0" max="2" step="0.1" />
             <span class="range-value">{{ settings.temperature }}</span>
           </div>
-
           <div class="form-group">
-            <label class="form-label">最大长度</label>
-            <input 
-              type="number" 
-              class="input" 
-              v-model="settings.maxLength" 
-              min="100" 
-              max="4096"
-            />
+            <label>最大长度</label>
+            <input type="number" v-model="settings.maxLength" class="fluent-input" min="100" max="4096" />
           </div>
-
           <div class="form-group">
-            <label class="form-label">Top P</label>
-            <input 
-              type="range" 
-              class="range-input" 
-              v-model="settings.topP" 
-              min="0" 
-              max="1" 
-              step="0.1"
-            />
+            <label>Top P</label>
+            <input type="range" v-model="settings.topP" min="0" max="1" step="0.1" />
             <span class="range-value">{{ settings.topP }}</span>
           </div>
         </div>
@@ -147,411 +40,172 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue'
+import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 
-// 可用模型
-const availableModels = ref([
-  {
-    id: 1,
-    name: 'Llama2-7B-Chat',
-    size: '7B',
-    icon: 'fluent:brain-circuit-24-regular',
-    status: 'loaded'
-  },
-  {
-    id: 2,
-    name: 'Qwen-7B-Chat',
-    size: '7B',
-    icon: 'fluent:brain-circuit-24-regular',
-    status: 'unloaded'
-  },
-  {
-    id: 3,
-    name: 'ChatGLM3-6B',
-    size: '6B',
-    icon: 'fluent:brain-circuit-24-regular',
-    status: 'unloaded'
-  }
-])
-
-// 选中的模型
-const selectedModel = ref(availableModels.value[0])
-
-// 推理设置
-const settings = ref({
-  temperature: 0.7,
-  maxLength: 2048,
-  topP: 0.9
-})
-
-// 对话消息
 const chatMessages = ref([
-  {
-    id: 1,
-    role: 'assistant',
-    content: '你好！我是 Elysian-Realm 的AI助手，有什么可以帮助您的吗？',
-    timestamp: new Date()
-  }
+  { id: 1, role: 'assistant', content: '你好！我是AI助手，有什么可以帮您？' }
 ])
 
-// 用户输入
 const userInput = ref('')
-const isGenerating = ref(false)
-const chatContainer = ref<HTMLElement>()
+const settings = ref({ temperature: 0.7, maxLength: 2048, topP: 0.9 })
 
-// 选择模型
-const selectModel = (model: any) => {
-  selectedModel.value = model
-  console.log('选择模型:', model.name)
-}
-
-// 发送消息
-const sendMessage = async () => {
-  if (!userInput.value.trim() || !selectedModel.value || isGenerating.value) return
-
-  const userMessage = {
-    id: Date.now(),
-    role: 'user' as const,
-    content: userInput.value,
-    timestamp: new Date()
-  }
-
-  chatMessages.value.push(userMessage)
-  const message = userInput.value
-  userInput.value = ''
-  isGenerating.value = true
-
-  // 滚动到底部
-  await nextTick()
-  scrollToBottom()
-
-  // 模拟AI回复
+const sendMessage = () => {
+  if (!userInput.value.trim()) return
+  chatMessages.value.push({ id: Date.now(), role: 'user', content: userInput.value })
   setTimeout(() => {
-    const assistantMessage = {
-      id: Date.now() + 1,
-      role: 'assistant' as const,
-      content: `这是对"${message}"的回复。我正在使用 ${selectedModel.value?.name} 模型为您生成回答。`,
-      timestamp: new Date()
-    }
-    chatMessages.value.push(assistantMessage)
-    isGenerating.value = false
-    
-    nextTick(() => {
-      scrollToBottom()
-    })
-  }, 2000)
+    chatMessages.value.push({ id: Date.now()+1, role: 'assistant', content: '这是AI的回复。' })
+  }, 1000)
+  userInput.value = ''
 }
-
-// 清空对话
-const clearChat = () => {
-  chatMessages.value = [{
-    id: Date.now(),
-    role: 'assistant',
-    content: '对话已清空。有什么可以帮助您的吗？',
-    timestamp: new Date()
-  }]
-}
-
-// 导出对话
-const exportChat = () => {
-  const chatText = chatMessages.value
-    .map(msg => `${msg.role === 'user' ? '用户' : 'AI'}: ${msg.content}`)
-    .join('\n\n')
-  
-  const blob = new Blob([chatText], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `chat-${new Date().toISOString().slice(0, 10)}.txt`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-// 滚动到底部
-const scrollToBottom = () => {
-  if (chatContainer.value) {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-  }
-}
-
-// 格式化时间
-const formatTime = (date: Date) => {
-  return date.toLocaleTimeString('zh-CN', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  })
-}
-
-onMounted(() => {
-  scrollToBottom()
-})
 </script>
 
 <style scoped>
-.infer-page {
-  padding: var(--spacing-xl) 0;
-}
-
-.page-header {
-  text-align: center;
-  margin-bottom: var(--spacing-2xl);
-}
-
-.page-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-sm);
-}
-
-.page-description {
-  font-size: 16px;
-  color: var(--color-text-secondary);
-}
-
-.model-selection {
-  margin-bottom: var(--spacing-xl);
-}
-
-.section-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-lg);
-}
-
-.model-grid {
-  margin-bottom: var(--spacing-lg);
-}
-
-.model-card {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.model-card:hover {
-  border-color: var(--color-primary);
-  background: var(--color-bg-secondary);
-}
-
-.model-card.active {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: white;
-}
-
-.model-icon {
-  font-size: 24px;
-  color: var(--color-primary);
-}
-
-.model-card.active .model-icon {
-  color: white;
-}
-
-.model-info {
-  flex: 1;
-}
-
-.model-name {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: var(--spacing-xs);
-}
-
-.model-size {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-}
-
-.model-card.active .model-size {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.model-status {
-  font-size: 12px;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-tertiary);
-}
-
-.model-status.loaded {
-  background: #107c10;
-  color: white;
-}
-
-.model-status.unloaded {
-  background: var(--color-text-secondary);
-  color: white;
-}
-
-.chat-interface {
-  margin-bottom: var(--spacing-xl);
-}
-
-.chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-lg);
-}
-
-.chat-controls {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.chat-messages {
-  height: 400px;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-  background: var(--color-bg-primary);
-}
-
-.message {
-  display: flex;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-}
-
-.message-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-bg-secondary);
+.fluent-infer-root {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e3e9f7 0%, #f7faff 40%, #f6f3ff 70%, #f9f6f3 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
-
-.message.user .message-avatar {
-  background: var(--color-primary);
-  color: white;
-}
-
-.message-content {
-  flex: 1;
-}
-
-.message-text {
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: var(--spacing-xs);
-}
-
-.message-time {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.chat-input {
-  margin-bottom: var(--spacing-lg);
-}
-
-.input-group {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.input-group .textarea {
-  flex: 1;
-  resize: none;
-  min-height: 60px;
-}
-
-.send-button {
-  width: 48px;
-  height: 48px;
-  padding: 0;
-}
-
-.typing-indicator {
-  display: flex;
-  gap: 4px;
-}
-
-.typing-indicator span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-text-secondary);
-  animation: typing 1.4s infinite ease-in-out;
-}
-
-.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes typing {
-  0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
-}
-
-.inference-settings {
-  margin-bottom: var(--spacing-xl);
-}
-
-.settings-grid {
-  margin-bottom: var(--spacing-lg);
-}
-
-.form-group {
-  margin-bottom: var(--spacing-md);
-}
-
-.form-label {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-sm);
-}
-
-.range-input {
+.fluent-infer-main {
   width: 100%;
-  margin-bottom: var(--spacing-xs);
+  max-width: 700px;
+  margin: 48px auto;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(24px) saturate(1.2);
+  padding: 40px 36px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: fadeInUp 0.8s;
 }
-
+.fluent-infer-header h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #222;
+  margin-bottom: 8px;
+}
+.fluent-infer-header .desc {
+  color: #0078d4;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.fluent-infer-chat {
+  border-radius: 20px;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 4px 24px 0 rgba(0,120,212,0.10);
+  padding: 24px 18px;
+  margin-bottom: 18px;
+}
+.chat-messages {
+  min-height: 180px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chat-bubble {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  border-radius: 16px;
+  background: #f7faff;
+  box-shadow: 0 2px 8px 0 rgba(0,120,212,0.06);
+  padding: 10px 16px;
+  max-width: 80%;
+  font-size: 1.05rem;
+  animation: fadeInUp 0.4s;
+}
+.chat-bubble.user {
+  align-self: flex-end;
+  background: linear-gradient(120deg, #e3e9f7 60%, #f7faff 100%);
+  color: #0078d4;
+}
+.chat-bubble.assistant {
+  align-self: flex-start;
+  background: #fff;
+  color: #222;
+}
+.avatar {
+  font-size: 1.4rem;
+  margin-right: 4px;
+}
+.bubble-content {
+  word-break: break-all;
+}
+.chat-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.fluent-input {
+  border-radius: 12px;
+  border: none;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 2px 8px 0 rgba(0,120,212,0.06);
+  padding: 10px 14px;
+  font-size: 1rem;
+  color: #222;
+  transition: box-shadow 0.2s, border 0.2s;
+  outline: none;
+  flex: 1;
+  min-height: 48px;
+  resize: vertical;
+}
+.fluent-input:focus {
+  box-shadow: 0 0 0 2px #0078d4;
+}
+.send-btn {
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #0078d4 60%, #60aaff 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 12px 0 rgba(0,120,212,0.08);
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.send-btn:hover {
+  background: linear-gradient(120deg, #005fa3 60%, #60aaff 100%);
+}
+.fluent-infer-settings {
+  border-radius: 20px;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 4px 24px 0 rgba(0,120,212,0.10);
+  padding: 18px 18px;
+}
+.settings-row {
+  display: flex;
+  gap: 24px;
+}
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .range-value {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  font-size: 0.98rem;
+  color: #0078d4;
+  margin-left: 8px;
 }
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .model-grid,
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .chat-header {
-    flex-direction: column;
-    gap: var(--spacing-md);
-    align-items: flex-start;
-  }
-  
-  .chat-controls {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .input-group {
-    flex-direction: column;
-  }
-  
-  .send-button {
-    width: 100%;
-    height: 40px;
-  }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px);}
+  to { opacity: 1; transform: none;}
+}
+@media (max-width: 900px) {
+  .fluent-infer-main { padding: 24px 8px; }
+  .settings-row { flex-direction: column; gap: 8px; }
 }
 </style> 

@@ -9,6 +9,14 @@ import InferPage from './pages/InferPage.vue'
 import TunePage from './pages/TunePage.vue'
 import ModelPage from './pages/ModelPage.vue'
 
+if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  if (e.matches) document.documentElement.classList.add('dark');
+  else document.documentElement.classList.remove('dark');
+});
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
