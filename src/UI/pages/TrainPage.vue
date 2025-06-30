@@ -1,9 +1,30 @@
 <template>
-  <div class="fluent-train-root">
     <div class="fluent-train-main glass">
       <div class="fluent-train-header">
         <h1>模型训练</h1>
         <div class="desc">配置训练参数，开始模型微调过程</div>
+        <br>
+        <p style="text-indent:2em">
+          这是描述这是描述这是描述这是描述这是描述这是<br>
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述这是描述这是描述
+          这是描述这是描述这是描述这是描述
+        </p>
       </div>
       <form class="fluent-train-form">
         <div class="form-row">
@@ -94,12 +115,11 @@
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
 import './TrainPage.css'
-import { ref } from 'vue'
+import { ref, Text } from 'vue'
 import { Icon } from '@iconify/vue'
 
 // 训练配置

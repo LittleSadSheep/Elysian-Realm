@@ -368,20 +368,20 @@ body {
 }
 
 .glass {
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  backdrop-filter: blur(24px) saturate(1.2);
-  background: rgba(255,255,255,0.65);
-  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.12);
+  /* -webkit-backdrop-filter: blur(24px) saturate(1.2); */
+  /* backdrop-filter: blur(24px) saturate(1.2); */
+  background: transparent;
+  box-shadow: transparent;
 }
 
 .fluent-home-card {
-  backdrop-filter: blur(32px) saturate(1.3);
-  -webkit-backdrop-filter: blur(32px) saturate(1.3);
+  /* backdrop-filter: blur(32px) saturate(1.3); */
+  /* -webkit-backdrop-filter: blur(32px) saturate(1.3); */
 }
 
 .fluent-btn, .fluent-home-card, .fluent-home-hero {
-  -webkit-user-select: none;
-  user-select: none;
+  /* -webkit-user-select: none; */
+  /* user-select: none; */
 }
 
 :root {
