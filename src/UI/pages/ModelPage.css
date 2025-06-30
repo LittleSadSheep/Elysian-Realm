@@ -1,0 +1,121 @@
+/* ModelPage.vue 样式已迁移 */
+.fluent-model-root {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f9f6f300 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fluent-model-main {
+  width: 100%;
+  max-width: 900px;
+  margin: 48px auto;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(24px) saturate(1.2);
+  padding: 40px 36px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: fadeInUp 0.8s;
+}
+.fluent-model-header h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #222;
+  margin-bottom: 8px;
+}
+.fluent-model-header .desc {
+  color: #0078d4;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.fluent-model-actions {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+.fluent-btn {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px 0 rgba(0,120,212,0.08);
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 12px 32px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fluent-btn.primary {
+  background: linear-gradient(120deg, #0078d4 60%, #60aaff 100%);
+  color: #fff;
+}
+.fluent-btn.primary:hover {
+  background: linear-gradient(120deg, #005fa3 60%, #60aaff 100%);
+}
+.fluent-btn.secondary {
+  background: #f7faff;
+  color: #0078d4;
+}
+.fluent-btn.secondary:hover {
+  background: #e3e9f7;
+  color: #005fa3;
+}
+.fluent-btn.mini {
+  padding: 6px 10px;
+  font-size: 1rem;
+  border-radius: 10px;
+}
+.fluent-model-table {
+  border-radius: 20px;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 4px 24px 0 rgba(0,120,212,0.10);
+  padding: 18px 18px;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1.05rem;
+  background: transparent;
+}
+th, td {
+  padding: 12px 10px;
+  text-align: left;
+}
+th {
+  color: #0078d4;
+  font-weight: 700;
+  background: transparent;
+}
+tbody tr {
+  border-radius: 12px;
+  background: #f7faff;
+  box-shadow: 0 2px 8px 0 rgba(0,120,212,0.06);
+  transition: box-shadow 0.2s;
+}
+tbody tr:hover {
+  box-shadow: 0 8px 32px 0 rgba(0,120,212,0.12);
+}
+.status-dot {
+  font-size: 1.2em;
+  margin-right: 6px;
+}
+.status-dot.ready {
+  color: #0078d4;
+}
+.status-dot.unloaded {
+  color: #aaa;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px);}
+  to { opacity: 1; transform: none;}
+}
+@media (max-width: 900px) {
+  .fluent-model-main { padding: 24px 8px; }
+  th, td { padding: 8px 4px; }
+}

@@ -1,0 +1,148 @@
+/* InferPage.vue 样式已迁移 */
+.fluent-infer-root {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f9f6f300 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fluent-infer-main {
+  width: 100%;
+  max-width: 700px;
+  margin: 48px auto;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(24px) saturate(1.2);
+  padding: 40px 36px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: fadeInUp 0.8s;
+}
+.fluent-infer-header h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #222;
+  margin-bottom: 8px;
+}
+.fluent-infer-header .desc {
+  color: #0078d4;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.fluent-infer-chat {
+  border-radius: 20px;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 4px 24px 0 rgba(0,120,212,0.10);
+  padding: 24px 18px;
+  margin-bottom: 18px;
+}
+.chat-messages {
+  min-height: 180px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chat-bubble {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  border-radius: 16px;
+  background: #f7faff;
+  box-shadow: 0 2px 8px 0 rgba(0,120,212,0.06);
+  padding: 10px 16px;
+  max-width: 80%;
+  font-size: 1.05rem;
+  animation: fadeInUp 0.4s;
+}
+.chat-bubble.user {
+  align-self: flex-end;
+  background: linear-gradient(120deg, #e3e9f7 60%, #f7faff 100%);
+  color: #0078d4;
+}
+.chat-bubble.assistant {
+  align-self: flex-start;
+  background: #fff;
+  color: #222;
+}
+.avatar {
+  font-size: 1.4rem;
+  margin-right: 4px;
+}
+.bubble-content {
+  word-break: break-all;
+}
+.chat-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.fluent-input {
+  border-radius: 12px;
+  border: none;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 2px 8px 0 rgba(0,120,212,0.06);
+  padding: 10px 14px;
+  font-size: 1rem;
+  color: #222;
+  transition: box-shadow 0.2s, border 0.2s;
+  outline: none;
+  flex: 1;
+  min-height: 48px;
+  resize: vertical;
+}
+.fluent-input:focus {
+  box-shadow: 0 0 0 2px #0078d4;
+}
+.send-btn {
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #0078d4 60%, #60aaff 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 12px 0 rgba(0,120,212,0.08);
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.send-btn:hover {
+  background: linear-gradient(120deg, #005fa3 60%, #60aaff 100%);
+}
+.fluent-infer-settings {
+  border-radius: 20px;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 4px 24px 0 rgba(0,120,212,0.10);
+  padding: 18px 18px;
+}
+.settings-row {
+  display: flex;
+  gap: 24px;
+}
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.range-value {
+  font-size: 0.98rem;
+  color: #0078d4;
+  margin-left: 8px;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px);}
+  to { opacity: 1; transform: none;}
+}
+@media (max-width: 900px) {
+  .fluent-infer-main { padding: 24px 8px; }
+  .settings-row { flex-direction: column; gap: 8px; }
+}
