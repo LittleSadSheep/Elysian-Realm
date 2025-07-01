@@ -6,8 +6,6 @@ import optuna
 from src.train import train_main
 
 
-
-
 # def tune_main():
 #     """
 #     Optuna自动调参入口
@@ -33,10 +31,13 @@ def tune_main():
     # """
     global use_checkpoint
     use_checkpoint = False  # 自动调参时禁用检查点，确保每次训练都是全新开始
+
     # 定义超参数搜索空间和目标函数
     def objective(trial):
         learning_rate = trial.suggest_loguniform("learning_rate", 1e-6, 5e-4)
-        per_device_train_batch_size = trial.suggest_categorical("per_device_train_batch_size", [2, 4])  # 避免8
+        per_device_train_batch_size = trial.suggest_categorical(
+            "per_device_train_batch_size", [2, 4]
+        )  # 避免8
         lora_r = trial.suggest_categorical("lora_r", [8, 16])
         lora_alpha = trial.suggest_categorical("lora_alpha", [16, 32])
         lora_dropout = trial.suggest_uniform("lora_dropout", 0.05, 0.2)
@@ -49,8 +50,9 @@ def tune_main():
             lora_dropout=lora_dropout,
             num_train_epochs=num_train_epochs,
             trial=trial,
-            use_checkpoint=False  # 关键：禁用checkpoint
+            use_checkpoint=False,  # 关键：禁用checkpoint
         )
+
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=10)
     print("最优参数:", study.best_params)
