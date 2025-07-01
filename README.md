@@ -208,6 +208,8 @@ graph TD
   <img alt="contributors" src="https://contrib.rocks/image?repo=LittleSadSheep/Elysian-Realm" />
 </a>
 
+![Alt](https://repobeats.axiom.co/api/embed/c9b69a13b5c99cdf22f8f2fdafb4399498513e4b.svg "Repobeats analytics image")
+
 ## Star历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=LittleSadSheep/Elysian-Realm&type=Date)](https://star-history.com/#LittleSadSheep/Elysian-Realm&Date)
