@@ -13,7 +13,6 @@
 /data.json
 /_unsloth_temporary_saved_buffers
 /output.gguf
-*.toml
 node_modules/
 src\UI\node_modules
 # Byte-compiled / optimized / DLL files
